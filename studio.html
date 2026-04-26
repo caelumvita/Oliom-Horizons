@@ -340,7 +340,7 @@
 <div id="game"></div>
 
 <div id="topbar" class="glass">
-  <div id="brand"><strong>Oliom Horizons Studio</strong><span>World Builder · OHS · publish-ready</span></div>
+  <div id="brand"><strong>Oliom Horizons Studio</strong><span id="firebaseStatus">World Builder · OHS · Firebase</span></div>
   <div id="topActions">
     <button id="physicsTestBtn" class="secondary">Physics</button>
     <button id="playerTestBtn">Play</button>
@@ -1210,6 +1210,7 @@ function loadOhsWorldData(worldData){
 async function publishOhsWorld(){
  if(playMode){toast('Stop test before publishing');return}
  syncActiveScript();
+ const status=document.getElementById('firebaseStatus');
  const user=await authReady();
  if(!user){
   alert('Please sign in before publishing.');
@@ -1217,16 +1218,17 @@ async function publishOhsWorld(){
   return;
  }
  if(await checkAccountStatusOrBlock(user))return;
- const profile=await ensureProfile(user);
  await touchUserDevice(user);
+ const profile=await ensureProfile(user);
  const title=prompt('World title:', localStorage.getItem('oliomLastWorldTitle')||'My OHS World');
  if(!title)return;
  localStorage.setItem('oliomLastWorldTitle',title);
  const description=prompt('World description:', 'Created in Oliom Horizons Studio with OHS scripts.')||'';
  publishBtn.disabled=true;
  publishBtn.textContent='Publishing...';
+ if(status)status.textContent='Publishing to Firebase...';
  try{
-  await addDoc(collection(db,'worlds'),{
+  const ref=await addDoc(collection(db,'worlds'),{
    title:title.trim().slice(0,64)||'Untitled OHS World',
    titleLower:(title.trim().slice(0,64)||'Untitled OHS World').toLowerCase(),
    description:description.trim().slice(0,280),
@@ -1244,9 +1246,14 @@ async function publishOhsWorld(){
    updatedAt:serverTimestamp()
   });
   toast('Published to Games');
+  if(status)status.textContent='Published · open Games';
+  if(confirm('Published! Open Games page now?')){
+    location.href='server.html?justPublished='+encodeURIComponent(ref.id);
+  }
  }catch(err){
-  console.error(err);
-  alert('Publish failed: '+err.message+'\n\nCheck Firestore Rules and make sure the new rules include worlds/create.');
+  console.error('Publish failed:',err);
+  if(status)status.textContent='Publish failed';
+  alert('Publish failed: '+err.message+'\n\nMost likely fix: open Firebase > Firestore Database > Rules and paste the new firestore-rules.txt.');
  }finally{
   publishBtn.disabled=false;
   publishBtn.textContent='Publish';
