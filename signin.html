@@ -16,7 +16,7 @@
     <nav class="main-nav">
       <a href="index.html" class="btn">Home</a>
       <a href="studio.html" class="btn">Studio</a>
-      <a href="server.html" class="btn">Servers</a>
+      <a href="server.html" class="btn">Games</a>
       <a href="rules.html" class="btn">Rules</a>
     </nav>
     <div class="auth-buttons" data-auth></div>
@@ -45,17 +45,12 @@
 
 import { $, auth, renderHeaderAuth, createUserWithEmailAndPassword, updateProfile, createProfileForUser } from "./firebase-core.js";
 await renderHeaderAuth();
-
 async function doSignup() {
   const username = $("username").value.trim().slice(0, 24);
   const email = $("email").value.trim();
   const password = $("password").value;
   $("msg").textContent = "";
-  if (!username || !email || !password) {
-    $("msg").textContent = "Type username, email and password.";
-    return;
-  }
-
+  if (!username || !email || !password) { $("msg").textContent = "Type username, email and password."; return; }
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(cred.user, { displayName: username });
