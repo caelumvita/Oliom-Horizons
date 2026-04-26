@@ -16,7 +16,7 @@
     <nav class="main-nav">
       <a href="index.html" class="btn">Home</a>
       <a href="studio.html" class="btn">Studio</a>
-      <a href="server.html" class="btn">Servers</a>
+      <a href="server.html" class="btn">Games</a>
       <a href="rules.html" class="btn">Rules</a>
     </nav>
     <div class="auth-buttons" data-auth></div>
@@ -37,7 +37,7 @@
 
     <section id="editProfileBox" class="block" style="display:none;">
       <h2>Edit profile</h2>
-      <p class="tiny">Choose an avatar color and write a short bio. Green is the default for new accounts.</p>
+      <p class="tiny">Choose an avatar color and write a short bio.</p>
       <div id="avatarGrid" class="avatar-grid"></div>
       <label class="tiny" for="bioInput">Bio</label>
       <textarea id="bioInput" maxlength="200" placeholder="Write something about your account..."></textarea>
@@ -49,11 +49,8 @@
       </div>
     </section>
 
-    <div class="logo-card" aria-label="Oliom Horizons artwork">
-      <img src="https://res.cloudinary.com/duqlfltkd/image/upload/q_auto/f_auto/v1777207275/Meet_The_TF2_title_card_1_phqjuo.png" alt="Oliom Horizons artwork">
-    </div>
-
-    <p>Welcome to Oliom Horizons. This version is connected to Firebase Auth and Cloud Firestore.</p>
+    <div class="logo-card"><img src="https://res.cloudinary.com/duqlfltkd/image/upload/q_auto/f_auto/v1777207275/Meet_The_TF2_title_card_1_phqjuo.png" alt="Oliom Horizons artwork"></div>
+    <p>Welcome to Oliom Horizons. Build worlds in Studio, publish them, and let friends join your games.</p>
 
     <section class="block">
       <h2>Player search</h2>
@@ -61,9 +58,12 @@
         <input type="text" id="userSearchInput" placeholder="Type username..." />
         <button id="userSearchBtn" class="btn">Search</button>
       </div>
-      <div id="userSearchResults">
-        <p class="comment-empty">Sign in, then type a name to search players.</p>
-      </div>
+      <div id="userSearchResults"><p class="comment-empty">Sign in, then type a name to search players.</p></div>
+    </section>
+
+    <section class="block">
+      <h2>Friends</h2>
+      <div id="friendsList"><p class="comment-empty">Sign in to see friends.</p></div>
     </section>
 
     <section class="block">
@@ -89,6 +89,10 @@
           </div>
         </div>
         <div id="profileBio" class="profile-bio" style="margin-top:10px;">No bio yet.</div>
+        <div class="row-actions" style="margin-top:12px;">
+          <button id="addFriendBtn" class="btn primary">Add friend</button>
+          <span id="profileMsg" class="tiny"></span>
+        </div>
       </div>
     </div>
 
@@ -99,12 +103,13 @@
 import {
   auth, db, $, AVATARS, DEFAULT_AVATAR, escapeHtml, avatarUrl, avatarColorFromUrl,
   renderHeaderAuth, authReady, ensureProfile, updateProfileData,
-  collection, getDocs, query, orderBy, addDoc, serverTimestamp
+  collection, getDocs, query, orderBy, addDoc, serverTimestamp, where, doc, setDoc
 } from "./firebase-core.js";
 
 let currentUser = null;
 let currentProfile = null;
 let selectedAvatar = DEFAULT_AVATAR;
+let selectedProfile = null;
 
 await renderHeaderAuth();
 
@@ -119,14 +124,12 @@ async function renderUserCard() {
     $("commentInfo").textContent = "Sign in to post comments.";
     return;
   }
-
   currentProfile = await ensureProfile(currentUser);
   $("welcomeText").textContent = `Welcome ${currentProfile.username}`;
   $("userNameDisplay").textContent = currentProfile.username;
   $("userAvatar").src = avatarUrl(currentProfile.avatar);
   $("openEditProfile").style.display = "inline-flex";
   $("commentInfo").textContent = "You are signed in. Comments will be stored in Firestore.";
-
   if (currentProfile.bio && currentProfile.bio.trim()) {
     $("myBioLine").textContent = currentProfile.bio.trim();
     $("myBioLine").style.display = "block";
@@ -178,25 +181,13 @@ async function saveProfile() {
 async function renderSearchResults() {
   const queryText = $("userSearchInput").value.trim().toLowerCase();
   const box = $("userSearchResults");
-  if (!currentUser) {
-    box.innerHTML = '<p class="comment-empty">Sign in to search players.</p>';
-    return;
-  }
-  if (!queryText) {
-    box.innerHTML = '<p class="comment-empty">Type a name to search players.</p>';
-    return;
-  }
-
+  if (!currentUser) { box.innerHTML = '<p class="comment-empty">Sign in to search players.</p>'; return; }
+  if (!queryText) { box.innerHTML = '<p class="comment-empty">Type a name to search players.</p>'; return; }
   const snap = await getDocs(collection(db, "users"));
   const users = [];
   snap.forEach(docSnap => users.push({ id: docSnap.id, ...docSnap.data() }));
   const filtered = users.filter(u => (u.usernameLower || "").includes(queryText));
-
-  if (!filtered.length) {
-    box.innerHTML = '<p class="comment-empty">No players found.</p>';
-    return;
-  }
-
+  if (!filtered.length) { box.innerHTML = '<p class="comment-empty">No players found.</p>'; return; }
   box.innerHTML = "";
   filtered.forEach(user => {
     const row = document.createElement("div");
@@ -214,22 +205,63 @@ async function renderSearchResults() {
 }
 
 function openProfile(user) {
+  selectedProfile = user;
   $("profileAvatar").src = avatarUrl(user.avatar);
   $("profileName").textContent = user.username || "Player";
   $("profileStatus").textContent = user.id === currentUser?.uid ? "This is your account" : "Firebase account";
   $("profileBio").textContent = user.bio || "No bio yet.";
+  $("profileMsg").textContent = "";
+  $("addFriendBtn").style.display = user.id === currentUser?.uid ? "none" : "inline-flex";
   $("profileModal").classList.add("show");
+}
+
+async function addFriend() {
+  if (!currentUser || !currentProfile || !selectedProfile || selectedProfile.id === currentUser.uid) return;
+  const ids = [currentUser.uid, selectedProfile.id].sort();
+  const friendshipId = `${ids[0]}_${ids[1]}`;
+  await setDoc(doc(db, "friends", friendshipId), {
+    users: ids,
+    userA: ids[0],
+    userB: ids[1],
+    names: {
+      [currentUser.uid]: currentProfile.username,
+      [selectedProfile.id]: selectedProfile.username
+    },
+    avatars: {
+      [currentUser.uid]: currentProfile.avatar || DEFAULT_AVATAR,
+      [selectedProfile.id]: selectedProfile.avatar || DEFAULT_AVATAR
+    },
+    createdAt: serverTimestamp()
+  }, { merge: true });
+  $("profileMsg").textContent = "Friend added.";
+  await renderFriends();
+}
+
+async function renderFriends() {
+  const box = $("friendsList");
+  if (!currentUser) { box.innerHTML = '<p class="comment-empty">Sign in to see friends.</p>'; return; }
+  const q = query(collection(db, "friends"), where("users", "array-contains", currentUser.uid));
+  const snap = await getDocs(q);
+  if (snap.empty) { box.innerHTML = '<p class="comment-empty">No friends yet. Search a player and press Add friend.</p>'; return; }
+  const rows = [];
+  snap.forEach(d => {
+    const f = d.data();
+    const otherId = (f.users || []).find(id => id !== currentUser.uid);
+    rows.push({ id: otherId, name: f.names?.[otherId] || "Friend", avatar: f.avatars?.[otherId] || DEFAULT_AVATAR });
+  });
+  box.innerHTML = rows.map(f => `
+    <div class="friend-card" style="display:flex;align-items:center;gap:10px;">
+      <img src="${avatarUrl(f.avatar)}" class="friend-avatar" alt="Friend avatar">
+      <div><div class="friend-name">${escapeHtml(f.name)}</div><div class="tiny">Friend</div></div>
+    </div>
+  `).join("");
 }
 
 async function renderComments() {
   const box = $("commentsList");
   const q = query(collection(db, "comments"), orderBy("createdAt", "desc"));
   const snap = await getDocs(q);
-  if (snap.empty) {
-    box.innerHTML = '<p class="comment-empty">No comments yet.</p>';
-    return;
-  }
-
+  if (snap.empty) { box.innerHTML = '<p class="comment-empty">No comments yet.</p>'; return; }
   const items = [];
   snap.forEach(d => items.push({ id: d.id, ...d.data() }));
   box.innerHTML = items.map(c => `
@@ -242,10 +274,7 @@ async function renderComments() {
 }
 
 async function postComment() {
-  if (!currentUser || !currentProfile) {
-    alert("Sign in first.");
-    return;
-  }
+  if (!currentUser || !currentProfile) { alert("Sign in first."); return; }
   const text = $("commentText").value.trim().slice(0, 500);
   if (!text) return;
   await addDoc(collection(db, "comments"), {
@@ -266,9 +295,11 @@ $("userSearchBtn").addEventListener("click", renderSearchResults);
 $("userSearchInput").addEventListener("keydown", e => { if (e.key === "Enter") renderSearchResults(); });
 $("profileOverlay").addEventListener("click", () => $("profileModal").classList.remove("show"));
 $("profileCloseBtn").addEventListener("click", () => $("profileModal").classList.remove("show"));
+$("addFriendBtn").addEventListener("click", addFriend);
 $("postCommentBtn").addEventListener("click", postComment);
 
 await renderUserCard();
+await renderFriends();
 await renderComments();
 
   </script>
