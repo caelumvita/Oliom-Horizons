@@ -1,119 +1,169 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Oliom Horizons — Servers</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-<header>
-  <a href="index.html" class="brand-mini">
-    <img src="https://res.cloudinary.com/duqlfltkd/image/upload/f_auto,q_auto/Logo_3_1_3_1_hrynwk" alt="Oliom Horizons logo" class="brand-logo">
-    <div class="brand-title">Oliom Horizons<span>Firebase prototype</span></div>
-  </a>
-  <nav class="main-nav">
-    <a href="index.html" class="btn">Home</a>
-    <a href="studio.html" class="btn">Studio</a>
-    <a href="server.html" class="btn">Servers</a>
-    <a href="rules.html" class="btn">Rules</a>
-  </nav>
-  <div class="auth-buttons" data-auth></div>
-</header>
+  <header>
+    <a href="index.html" class="brand-mini">
+      <img src="https://res.cloudinary.com/duqlfltkd/image/upload/f_auto,q_auto/Logo_3_1_3_1_hrynwk" alt="Oliom Horizons logo" class="brand-logo" />
+      <div class="brand-title">Oliom Horizons<span>Firebase</span></div>
+    </a>
+    <nav class="main-nav">
+      <a href="index.html" class="btn">Home</a>
+      <a href="studio.html" class="btn">Studio</a>
+      <a href="server.html" class="btn">Servers</a>
+      <a href="rules.html" class="btn">Rules</a>
+    </nav>
+    <div class="auth-buttons" data-auth></div>
+  </header>
 
-<main>
-<section class="block">
-  <h1 style="margin-top:0;">Published Servers</h1>
-  <p>This page shows Firestore server documents. Later it will show real published games/worlds.</p>
-  <div class="server-actions-bar">
-    <button id="openCreateServerBtn" class="btn primary">Create Server</button>
-    <button id="refreshServersBtn" class="btn">Refresh</button>
-    <span id="serverStatusLine" class="status-line">Loading servers...</span>
-  </div>
-  <div class="user-search-box" style="margin-bottom:12px;">
-    <input type="text" id="serverSearchInput" placeholder="Search servers by name...">
-    <button id="clearServerSearchBtn" class="btn">Clear search</button>
-  </div>
-  <div id="multiplayerList" class="server-list"><div class="server-empty">Loading servers...</div></div>
-</section>
-<div id="createServerModal" class="modal">
-  <div class="modal-overlay" id="createServerOverlay"></div>
-  <div class="modal-card">
-    <button class="btn modal-close" id="closeCreateServerBtn">✕</button>
-    <h2 style="margin-top:0;">Create Server</h2>
-    <p class="tiny">Create a Firestore placeholder server for a published world.</p>
-    <div class="server-form">
-      <label>Server name<input id="serverNameInput" type="text" maxlength="40" placeholder="My OH Server"></label>
-      <label>Description<textarea id="serverDescInput" maxlength="220" placeholder="Describe your server..."></textarea></label>
-      <div class="server-form-grid">
-        <label>Max players<select id="serverMaxPlayersInput"><option value="2">2</option><option value="4">4</option><option value="6">6</option><option value="8" selected>8</option><option value="12">12</option></select></label>
-        <label>Visibility<select id="serverVisibilityInput"><option value="public" selected>Public</option><option value="private">Private</option></select></label>
+  <main>
+
+    <section class="block">
+      <h1 style="margin-top:0;">Published Servers</h1>
+      <p>This page shows Firestore server documents. Later it will show real published games/worlds.</p>
+      <div class="server-actions-bar">
+        <button id="openCreateServerBtn" class="btn primary">Create Server</button>
+        <button id="refreshServersBtn" class="btn">Refresh</button>
+        <span id="serverStatusLine" class="status-line">Loading servers...</span>
       </div>
-      <div class="row-actions">
-        <button id="createServerSubmitBtn" class="btn primary">Create</button>
-        <button id="cancelCreateServerBtn" class="btn">Cancel</button>
-        <span id="createServerMsg" class="tiny"></span>
+      <div class="user-search-box" style="margin-bottom:12px;">
+        <input type="text" id="serverSearchInput" placeholder="Search servers by name..." />
+        <button id="clearServerSearchBtn" class="btn">Clear search</button>
+      </div>
+      <div id="multiplayerList" class="server-list"><div class="server-empty">Loading servers...</div></div>
+    </section>
+
+    <div id="createServerModal" class="modal">
+      <div class="modal-overlay" id="createServerOverlay"></div>
+      <div class="modal-card">
+        <button class="btn modal-close" id="closeCreateServerBtn">✕</button>
+        <h2 style="margin-top:0;">Create Server</h2>
+        <p class="tiny">Create a Firestore placeholder server for a published world.</p>
+        <div class="server-form">
+          <label>Server name<input id="serverNameInput" type="text" maxlength="40" placeholder="My OH Server" /></label>
+          <label>Description<textarea id="serverDescInput" maxlength="220" placeholder="Describe your server..."></textarea></label>
+          <div class="server-form-grid">
+            <label>Max players
+              <select id="serverMaxPlayersInput">
+                <option value="2">2</option><option value="4">4</option><option value="6">6</option><option value="8" selected>8</option><option value="12">12</option>
+              </select>
+            </label>
+            <label>Visibility
+              <select id="serverVisibilityInput">
+                <option value="public" selected>Public</option><option value="private">Private</option>
+              </select>
+            </label>
+          </div>
+          <div class="row-actions">
+            <button id="createServerSubmitBtn" class="btn primary">Create</button>
+            <button id="cancelCreateServerBtn" class="btn">Cancel</button>
+            <span id="createServerMsg" class="tiny"></span>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
-</main>
-<footer>© 2026 Oliom Horizons — Firebase prototype · <a href="rules.html" style="color:white;text-decoration:underline;">Rules</a></footer>
-<script type="module">
-import{$,db,renderHeaderAuth,authReady,ensureProfile,escapeHtml,collection,addDoc,getDocs,query,orderBy,serverTimestamp}from"./firebase-core.js";
+
+  </main>
+  <footer>© 2026 Oliom Horizons — Firebase · <a href="rules.html" style="color:white;text-decoration:underline;">Rules</a></footer>
+  <script type="module">
+
+import {
+  $, db, renderHeaderAuth, authReady, ensureProfile, escapeHtml,
+  collection, addDoc, getDocs, query, orderBy, serverTimestamp
+} from "./firebase-core.js";
 await renderHeaderAuth();
-let currentUser=await authReady();
-let currentProfile=currentUser?await ensureProfile(currentUser):null;
-function openCreateServer(){
-  if(!currentUser){alert("Create an account first.");location.href="signin.html";return}
-  $("serverNameInput").value=`${currentProfile.username}'s server`;
-  $("serverDescInput").value="";
-  $("serverMaxPlayersInput").value="8";
-  $("serverVisibilityInput").value="public";
-  $("createServerMsg").textContent="";
+
+let currentUser = await authReady();
+let currentProfile = currentUser ? await ensureProfile(currentUser) : null;
+
+function openCreateServer() {
+  if (!currentUser) {
+    alert("Create an account first.");
+    location.href = "signin.html";
+    return;
+  }
+  $("serverNameInput").value = `${currentProfile.username}'s server`;
+  $("serverDescInput").value = "";
+  $("serverMaxPlayersInput").value = "8";
+  $("serverVisibilityInput").value = "public";
+  $("createServerMsg").textContent = "";
   $("createServerModal").classList.add("show");
 }
-async function createServer(){
-  if(!currentUser||!currentProfile){$("createServerMsg").textContent="Sign in first.";return}
-  const name=$("serverNameInput").value.trim().slice(0,40);
-  if(!name){$("createServerMsg").textContent="Type a server name.";return}
-  await addDoc(collection(db,"servers"),{
+
+async function createServer() {
+  if (!currentUser || !currentProfile) {
+    $("createServerMsg").textContent = "Sign in first.";
+    return;
+  }
+  const name = $("serverNameInput").value.trim().slice(0, 40);
+  if (!name) {
+    $("createServerMsg").textContent = "Type a server name.";
+    return;
+  }
+  await addDoc(collection(db, "servers"), {
     name,
-    description:$("serverDescInput").value.trim().slice(0,220),
-    ownerId:currentUser.uid,
-    ownerName:currentProfile.username,
-    maxPlayers:Number($("serverMaxPlayersInput").value||8),
-    visibility:$("serverVisibilityInput").value,
-    playerCount:0,
-    status:"draft",
-    createdAt:serverTimestamp()
+    description: $("serverDescInput").value.trim().slice(0, 220),
+    ownerId: currentUser.uid,
+    ownerName: currentProfile.username,
+    maxPlayers: Number($("serverMaxPlayersInput").value || 8),
+    visibility: $("serverVisibilityInput").value,
+    playerCount: 0,
+    status: "draft",
+    createdAt: serverTimestamp()
   });
   $("createServerModal").classList.remove("show");
   await renderServers();
 }
-async function renderServers(){
-  const qText=$("serverSearchInput").value.trim().toLowerCase();
-  const snap=await getDocs(query(collection(db,"servers"),orderBy("createdAt","desc")));
-  const servers=[];
-  snap.forEach(d=>servers.push({id:d.id,...d.data()}));
-  const filtered=qText?servers.filter(s=>(s.name||"").toLowerCase().includes(qText)):servers;
-  $("serverStatusLine").textContent=`${filtered.length} server${filtered.length===1?"":"s"}`;
-  const box=$("multiplayerList");
-  if(!filtered.length){box.innerHTML='<div class="server-empty">No servers yet.</div>';return}
-  box.innerHTML=filtered.map(s=>`<div class="server-card"><div class="server-top"><div><div class="server-name">${escapeHtml(s.name||"Untitled server")}</div><div class="server-meta">Owner: ${escapeHtml(s.ownerName||"Unknown")} · ${escapeHtml(s.visibility||"public")}</div></div><button class="btn primary" type="button" onclick="alert('Real joining will come later.')">Join</button></div><div class="server-description">${escapeHtml(s.description||"No description.")}</div><div class="server-badges"><span class="badge">${s.playerCount||0} / ${s.maxPlayers||8} players</span><span class="badge">${escapeHtml(s.visibility||"public")}</span><span class="badge">${escapeHtml(s.status||"draft")}</span></div></div>`).join("");
+
+async function renderServers() {
+  const queryText = $("serverSearchInput").value.trim().toLowerCase();
+  const q = query(collection(db, "servers"), orderBy("createdAt", "desc"));
+  const snap = await getDocs(q);
+  const servers = [];
+  snap.forEach(d => servers.push({ id: d.id, ...d.data() }));
+  const filtered = queryText ? servers.filter(s => (s.name || "").toLowerCase().includes(queryText)) : servers;
+  $("serverStatusLine").textContent = `${filtered.length} server${filtered.length === 1 ? "" : "s"}`;
+
+  const box = $("multiplayerList");
+  if (!filtered.length) {
+    box.innerHTML = '<div class="server-empty">No servers yet.</div>';
+    return;
+  }
+  box.innerHTML = filtered.map(server => `
+    <div class="server-card">
+      <div class="server-top">
+        <div>
+          <div class="server-name">${escapeHtml(server.name || "Untitled server")}</div>
+          <div class="server-meta">Owner: ${escapeHtml(server.ownerName || "Unknown")} · ${escapeHtml(server.visibility || "public")}</div>
+        </div>
+        <button class="btn primary" type="button" onclick="alert('Real joining will come later.')">Join</button>
+      </div>
+      <div class="server-description">${escapeHtml(server.description || "No description.")}</div>
+      <div class="server-badges">
+        <span class="badge">${server.playerCount || 0} / ${server.maxPlayers || 8} players</span>
+        <span class="badge">${escapeHtml(server.visibility || "public")}</span>
+        <span class="badge">${escapeHtml(server.status || "draft")}</span>
+      </div>
+    </div>
+  `).join("");
 }
-$("openCreateServerBtn").onclick=openCreateServer;
-$("refreshServersBtn").onclick=renderServers;
-$("clearServerSearchBtn").onclick=()=>{$("serverSearchInput").value="";renderServers()};
-$("serverSearchInput").oninput=renderServers;
-$("closeCreateServerBtn").onclick=()=>$("createServerModal").classList.remove("show");
-$("cancelCreateServerBtn").onclick=()=>$("createServerModal").classList.remove("show");
-$("createServerOverlay").onclick=()=>$("createServerModal").classList.remove("show");
-$("createServerSubmitBtn").onclick=createServer;
+
+$("openCreateServerBtn").addEventListener("click", openCreateServer);
+$("refreshServersBtn").addEventListener("click", renderServers);
+$("clearServerSearchBtn").addEventListener("click", () => { $("serverSearchInput").value = ""; renderServers(); });
+$("serverSearchInput").addEventListener("input", renderServers);
+$("closeCreateServerBtn").addEventListener("click", () => $("createServerModal").classList.remove("show"));
+$("cancelCreateServerBtn").addEventListener("click", () => $("createServerModal").classList.remove("show"));
+$("createServerOverlay").addEventListener("click", () => $("createServerModal").classList.remove("show"));
+$("createServerSubmitBtn").addEventListener("click", createServer);
 await renderServers();
 
-</script>
+  </script>
 </body>
 </html>
