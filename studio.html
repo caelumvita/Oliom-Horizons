@@ -16,7 +16,7 @@
     <nav class="main-nav">
       <a href="index.html" class="btn">Home</a>
       <a href="studio.html" class="btn">Studio</a>
-      <a href="server.html" class="btn">Servers</a>
+      <a href="server.html" class="btn">Games</a>
       <a href="rules.html" class="btn">Rules</a>
     </nav>
     <div class="auth-buttons" data-auth></div>
@@ -26,37 +26,138 @@
 
     <section class="block">
       <h1 style="margin-top:0;">Oliom Horizons Studio</h1>
-      <p>This page is prepared for the full web studio. For now it checks whether your Firebase login works.</p>
       <p id="studioStatus" class="comment-info">Checking account...</p>
-      <div class="row-actions">
-        <a href="index.html" class="btn">Back Home</a>
-        <a href="server.html" class="btn">Published Servers</a>
-        <a href="rules.html" class="btn">Read Rules</a>
-      </div>
+      <p>Create a simple world, add parts, then publish it. Published games appear on the Games page.</p>
     </section>
-    <section class="block">
-      <h2>Studio Roadmap</h2>
-      <div class="grid rules-grid">
-        <div class="rule-card"><strong>Cloud accounts</strong><span>Firebase Auth is used for sign up and login.</span></div>
-        <div class="rule-card"><strong>Profiles</strong><span>Avatar color and bio are stored in Firestore.</span></div>
-        <div class="rule-card"><strong>Publishing</strong><span>World publishing can be added next with a worlds collection.</span></div>
-        <div class="rule-card"><strong>OHS scripts</strong><span>Keep scripts readable, safe, and easy to understand.</span></div>
+
+    <section class="studio-layout">
+      <div class="studio-panel">
+        <h2>Tools</h2>
+        <div class="server-form">
+          <label>World title<input id="worldTitle" maxlength="42" placeholder="My First World"></label>
+          <label>Description<textarea id="worldDescription" maxlength="220" placeholder="Short world description..."></textarea></label>
+          <button id="addPlatformBtn" class="btn">Add platform</button>
+          <button id="addBlockBtn" class="btn">Add block</button>
+          <button id="addGoalBtn" class="btn">Add goal</button>
+          <button id="deleteSelectedBtn" class="btn danger">Delete selected</button>
+          <button id="publishWorldBtn" class="btn primary">Publish World</button>
+          <span id="publishMsg" class="tiny"></span>
+        </div>
+        <p class="tiny" style="margin-top:10px;">Drag objects inside the canvas. Click an object to select it.</p>
       </div>
+      <div class="canvas-wrap" id="studioCanvas"></div>
     </section>
 
   </main>
   <footer>© 2026 Oliom Horizons — Firebase · <a href="rules.html" style="color:white;text-decoration:underline;">Rules</a></footer>
   <script type="module">
 
-import { renderHeaderAuth, authReady, ensureProfile, $ } from "./firebase-core.js";
+import {
+  $, db, renderHeaderAuth, authReady, ensureProfile, escapeHtml,
+  collection, addDoc, serverTimestamp
+} from "./firebase-core.js";
+
 await renderHeaderAuth();
 const user = await authReady();
+const profile = user ? await ensureProfile(user) : null;
 if (!user) {
-  $("studioStatus").textContent = "You are not signed in. Sign in first to use future online Studio features.";
+  $("studioStatus").textContent = "You are not signed in. Sign in first to publish worlds.";
 } else {
-  const profile = await ensureProfile(user);
-  $("studioStatus").textContent = `Signed in as ${profile.username}. Studio cloud features can be connected next.`;
+  $("studioStatus").textContent = `Signed in as ${profile.username}. You can publish worlds.`;
 }
+
+const canvas = $("studioCanvas");
+let objects = [
+  { id: "base", type: "platform", x: 120, y: 340, w: 360, h: 36, color: "#7ed957", label: "Spawn platform" },
+  { id: "goal", type: "goal", x: 540, y: 300, w: 70, h: 70, color: "#ffd166", label: "Goal" }
+];
+let selectedId = null;
+let drag = null;
+
+function renderCanvas() {
+  canvas.innerHTML = "";
+  objects.forEach(obj => {
+    const el = document.createElement("div");
+    el.className = "world-object" + (obj.id === selectedId ? " selected" : "");
+    el.style.left = obj.x + "px";
+    el.style.top = obj.y + "px";
+    el.style.width = obj.w + "px";
+    el.style.height = obj.h + "px";
+    el.style.background = obj.color;
+    el.textContent = obj.label || obj.type;
+    el.addEventListener("pointerdown", ev => {
+      selectedId = obj.id;
+      drag = { id: obj.id, ox: ev.clientX - obj.x, oy: ev.clientY - obj.y };
+      el.setPointerCapture(ev.pointerId);
+      renderCanvas();
+    });
+    canvas.appendChild(el);
+  });
+}
+
+window.addEventListener("pointermove", ev => {
+  if (!drag) return;
+  const obj = objects.find(o => o.id === drag.id);
+  if (!obj) return;
+  const rect = canvas.getBoundingClientRect();
+  obj.x = Math.max(0, Math.min(rect.width - obj.w, ev.clientX - rect.left - drag.ox));
+  obj.y = Math.max(0, Math.min(rect.height - obj.h, ev.clientY - rect.top - drag.oy));
+  renderCanvas();
+});
+window.addEventListener("pointerup", () => drag = null);
+
+function addObject(type) {
+  const colors = { platform:"#7ed957", block:"#8fdcff", goal:"#ffd166" };
+  const sizes = { platform:[150,30], block:[70,70], goal:[70,70] };
+  const [w,h] = sizes[type];
+  const id = type + "_" + Date.now();
+  objects.push({ id, type, x: 80 + Math.random()*250, y: 120 + Math.random()*180, w, h, color: colors[type], label: type });
+  selectedId = id;
+  renderCanvas();
+}
+
+async function publishWorld() {
+  if (!user || !profile) {
+    alert("Sign in first.");
+    return;
+  }
+  const title = $("worldTitle").value.trim().slice(0, 42) || "Untitled World";
+  const description = $("worldDescription").value.trim().slice(0, 220);
+  $("publishMsg").textContent = "Publishing...";
+  await addDoc(collection(db, "worlds"), {
+    title,
+    titleLower: title.toLowerCase(),
+    description,
+    ownerId: user.uid,
+    ownerName: profile.username,
+    ownerAvatar: profile.avatar || "",
+    ownerAvatarColor: profile.avatarColor || "green",
+    visibility: "public",
+    maxPlayers: 8,
+    playerCount: 0,
+    status: "published",
+    worldData: {
+      version: 1,
+      objects
+    },
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+  $("publishMsg").textContent = "Published! Open Games page.";
+}
+
+$("addPlatformBtn").addEventListener("click", () => addObject("platform"));
+$("addBlockBtn").addEventListener("click", () => addObject("block"));
+$("addGoalBtn").addEventListener("click", () => addObject("goal"));
+$("deleteSelectedBtn").addEventListener("click", () => {
+  if (!selectedId) return;
+  objects = objects.filter(o => o.id !== selectedId);
+  selectedId = null;
+  renderCanvas();
+});
+$("publishWorldBtn").addEventListener("click", publishWorld);
+
+renderCanvas();
 
   </script>
 </body>
