@@ -1,1 +1,726 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Oliom Horizons — Log in</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+:root {
+  --bg: #ffffff;
+  --paper: #ffffff;
+  --soft: #fbfef8;
+  --soft-green: #f2faee;
+  --lime: #7ed957;
+  --lime-hover: #73cb4e;
+  --green: #1f5d19;
+  --green-2: #3f922e;
+  --text: #172819;
+  --muted: #667868;
+  --line: #d6efcf;
+  --line-2: #cfe7c7;
+  --danger: #df5e5e;
+  --shadow: 0 1px 6px rgba(18, 48, 20, 0.045);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+a { color: inherit; text-decoration: none; }
+button, input, textarea, select { font: inherit; }
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  min-height: 58px;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+}
+
+main {
+  flex: 1;
+  width: min(1040px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 22px 0;
+}
+
+footer {
+  text-align: center;
+  padding: 12px;
+  background: var(--green);
+  color: #ffffff;
+  border-top: 1px solid var(--green);
+}
+
+.brand-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 6px;
+}
+
+.brand-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  background: #ffffff;
+  color: var(--green);
+  font-weight: 900;
+  letter-spacing: -0.08em;
+  border: 1px solid var(--line);
+  object-fit: contain;
+  padding: 3px;
+}
+
+.brand-title {
+  color: var(--green);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.brand-title span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.main-nav,
+.auth-buttons,
+.row-actions,
+.server-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 7px 14px;
+  font-size: 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--green-2);
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 700;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  box-shadow: none;
+}
+
+.btn:hover {
+  background: #f9fdf6;
+  border-color: var(--line-2);
+}
+
+.btn.primary {
+  background: var(--lime);
+  border-color: var(--lime);
+  color: #173019;
+}
+
+.btn.primary:hover {
+  background: var(--lime-hover);
+  border-color: var(--lime-hover);
+}
+
+.btn.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #ffffff;
+}
+
+.welcome-text,
+h1, h2, h3 {
+  color: var(--green-2);
+  text-shadow: none;
+}
+
+.welcome-text {
+  font-size: 18px;
+  margin: 0 0 10px;
+  font-weight: 700;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.65fr);
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.hero h1 {
+  font-size: clamp(36px, 6vw, 64px);
+  line-height: 0.96;
+  margin: 0 0 12px;
+}
+
+.hero p {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 14px;
+  max-width: 680px;
+}
+
+.hero-art {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.hero-art img {
+  width: 100%;
+  display: block;
+  border-radius: 12px;
+  object-fit: contain;
+}
+
+.logo-card {
+  max-width: min(620px, 90%);
+  min-height: 200px;
+  border-radius: 22px;
+  margin: 16px 0 20px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.logo-card::before {
+  content: "";
+  position: absolute;
+  inset: auto 18px 18px 18px;
+  height: 1px;
+  background: var(--line);
+}
+
+.logo-card img {
+  position: relative;
+  z-index: 2;
+  width: min(520px, 92%);
+  max-height: 190px;
+  object-fit: contain;
+  display: block;
+  border-radius: 14px;
+}
+
+.user-panel,
+.block {
+  background: var(--paper);
+  padding: 13px 16px;
+  border-radius: 16px;
+  box-shadow: none;
+  margin-bottom: 20px;
+  border: 1px solid var(--line);
+}
+
+.user-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 760px;
+}
+
+.user-avatar,
+.profile-avatar,
+.user-result-avatar,
+.friend-avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--soft-green);
+  border: 2px solid var(--line);
+}
+
+.user-avatar { width: 50px; height: 50px; }
+.profile-avatar { width: 72px; height: 72px; }
+.user-result-avatar { width: 42px; height: 42px; cursor: pointer; }
+.friend-avatar { width: 34px; height: 34px; }
+
+#userNameDisplay {
+  font-weight: 800;
+  color: var(--green);
+  font-size: 17px;
+}
+
+.block h2 {
+  margin-top: 0;
+  font-size: 21px;
+}
+
+.block p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.tiny,
+.comment-info,
+.comment-empty,
+.comment-date,
+.server-meta,
+.server-description,
+.server-empty,
+.profile-status,
+.profile-bio,
+.status-line {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.user-search-box {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.user-search-box input,
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  font-size: 14px;
+  background: #ffffff;
+  color: var(--text);
+  outline: none;
+}
+
+.user-search-box input {
+  flex: 1;
+  min-width: 220px;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #9fd990;
+  box-shadow: none;
+}
+
+textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+.user-result,
+.comment,
+.server-card,
+.rule-card {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #ffffff;
+  margin-top: 8px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.user-result:hover,
+.comment:hover,
+.server-card:hover,
+.rule-card:hover {
+  background: #ffffff;
+  border-color: var(--line-2);
+}
+
+.user-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.user-result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.user-result-name,
+.friend-name,
+.comment-author,
+.server-name,
+.profile-name {
+  font-weight: 700;
+  color: var(--green);
+}
+
+#friendsBox {
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.friend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.avatar-option {
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 4px;
+  cursor: pointer;
+  background: #ffffff;
+  transition: border-color 0.15s ease;
+}
+
+.avatar-option:hover { border-color: var(--line-2); }
+.avatar-option.selected {
+  border-color: var(--lime);
+  background: var(--soft-green);
+}
+
+.avatar-option img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 9px;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar-option .tiny {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  margin-top: 4px;
+}
+
+.server-actions-bar {
+  margin-bottom: 12px;
+}
+
+.server-list {
+  display: grid;
+  gap: 10px;
+}
+
+.server-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.server-name {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0 0 2px;
+}
+
+.server-description {
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 8px 0 10px;
+  white-space: pre-wrap;
+}
+
+.server-badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 6px 0 8px;
+}
+
+.badge {
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--green-2);
+}
+
+.server-empty {
+  padding: 12px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px dashed var(--line);
+}
+
+.grid {
+  display: grid;
+  gap: 10px;
+}
+
+.rules-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.rule-card strong {
+  display: block;
+  color: var(--green);
+  margin-bottom: 6px;
+}
+
+.rule-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  z-index: 5000;
+}
+
+.modal.show { display: block; }
+
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(24, 48, 25, 0.38);
+  backdrop-filter: blur(4px);
+}
+
+.modal-card {
+  position: relative;
+  max-width: 680px;
+  width: calc(100% - 20px);
+  margin: 80px auto 20px;
+  background: var(--paper);
+  color: var(--text);
+  border-radius: 18px;
+  box-shadow: 0 2px 10px rgba(18, 48, 20, 0.07);
+  padding: 16px;
+  border: 1px solid var(--line);
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+
+.modal-close {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+}
+
+.profile-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.server-form {
+  display: grid;
+  gap: 10px;
+}
+
+.server-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.server-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green);
+}
+
+@media (max-width: 860px) {
+  .hero { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  header { position: relative; top: 0; }
+  .main-nav, .auth-buttons { width: 100%; }
+  .btn { flex: 1; }
+  .avatar-grid { grid-template-columns: repeat(2, 1fr); }
+  .logo-card { max-width: 100%; }
+}
+</style>
+</head>
+<body>
+  <header>
+    <a href="index.html" class="brand-mini">
+      <img src="https://res.cloudinary.com/duqlfltkd/image/upload/f_auto,q_auto/Logo_3_1_3_1_hrynwk" alt="Oliom Horizons logo" class="brand-logo" />
+      <div class="brand-title">Oliom Horizons<span>local prototype</span></div>
+    </a>
+
+    <nav class="main-nav">
+      <a href="index.html" class="btn">Home</a>
+      <a href="studio.html" class="btn">Studio</a>
+      <a href="server.html" class="btn">Servers</a>
+      <a href="rules.html" class="btn">Rules</a>
+    </nav>
+
+    <div class="auth-buttons" data-auth></div>
+  </header>
+
+  <main>
+
+    <section class="block" style="max-width:560px;">
+      <h1 style="margin-top:0;">Log in</h1>
+      <p>Use a local Oliom Horizons account. This version saves your account only in this browser.</p>
+
+      <div class="server-form">
+        <label>
+          Username
+          <input id="username" type="text" maxlength="24" placeholder="Username" />
+        </label>
+        <label>
+          Password
+          <input id="password" type="password" maxlength="48" placeholder="Password" />
+        </label>
+        <div class="row-actions">
+          <button id="loginSubmit" class="btn primary">Log in</button>
+          <a href="signin.html" class="btn">Create account</a>
+        </div>
+        <span id="msg" class="tiny"></span>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>© 2026 Oliom Horizons — local prototype · <a href="rules.html" style="color:white;text-decoration:underline;">Rules</a></footer>
+
+  <script>
+
+const STORAGE = {
+  users: "oh_site_users_v1",
+  current: "oh_site_current_v1",
+  servers: "oh_site_servers_v1",
+  comments: "oh_site_comments_v1"
+};
+
+const DEFAULT_AVATAR = "https://res.cloudinary.com/duqlfltkd/image/upload/q_auto/f_auto/v1777208924/GreenBetter_nczggv.png";
+const AVATARS = [
+  { name: "Green", color: "green", url: "https://res.cloudinary.com/duqlfltkd/image/upload/q_auto/f_auto/v1777208924/GreenBetter_nczggv.png" },
+  { name: "Blue", color: "blue", url: "https://res.cloudinary.com/duqlfltkd/image/upload/q_auto/f_auto/v1777209011/BlueBetter_yifnfm.png" },
+  { name: "Red", color: "red", url: "https://res.cloudinary.com/duqlfltkd/image/upload/q_auto/f_auto/v1777208950/RedBetter_dkltfq.png" },
+  { name: "Orange", color: "orange", url: "https://res.cloudinary.com/duqlfltkd/image/upload/q_auto/f_auto/v1777209003/YellowBetter_yt0ops.png" }
+];
+
+const $ = (id) => document.getElementById(id);
+const now = () => new Date().toISOString();
+
+function read(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
+  catch { return fallback; }
+}
+
+function write(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function normalize(name) {
+  return String(name || "").trim().toLowerCase().replace(/\s+/g, "_");
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+
+function avatarUrl(value) {
+  if (!value) return DEFAULT_AVATAR;
+  if (typeof value === "string") return value;
+  return value.url || DEFAULT_AVATAR;
+}
+
+function avatarColorFromUrl(url) {
+  const found = AVATARS.find(a => a.url === url);
+  return found ? found.color : "green";
+}
+
+function getUsers() { return read(STORAGE.users, []); }
+function setUsers(users) { write(STORAGE.users, users); }
+function getCurrentUser() { return read(STORAGE.current, null); }
+function setCurrentUser(user) {
+  write(STORAGE.current, user);
+  const users = getUsers().filter(u => u.usernameLower !== user.usernameLower);
+  users.push(user);
+  setUsers(users);
+}
+
+function getServers() { return read(STORAGE.servers, []); }
+function setServers(servers) { write(STORAGE.servers, servers); }
+function getComments() { return read(STORAGE.comments, []); }
+function setComments(comments) { write(STORAGE.comments, comments); }
+
+function logout() {
+  localStorage.removeItem(STORAGE.current);
+  location.href = "index.html";
+}
+
+function updateHeaderAuth() {
+  const user = getCurrentUser();
+  const auth = document.querySelector("[data-auth]");
+  if (!auth) return;
+  auth.innerHTML = user
+    ? `<a class="btn primary" href="studio.html">Studio</a><button class="btn danger" onclick="logout()">Log out</button>`
+    : `<a class="btn" href="login.html">Log in</a><a class="btn primary" href="signin.html">Sign up</a>`;
+}
+
+updateHeaderAuth();
+
+function doLogin() {
+  const username = $("username").value.trim().slice(0, 24);
+  const password = $("password").value;
+  const user = getUsers().find(u => u.usernameLower === normalize(username) && u.password === password);
+  if (!username || !password) {
+    $("msg").textContent = "Type username and password.";
+    return;
+  }
+  if (!user) {
+    $("msg").textContent = "Local account not found.";
+    return;
+  }
+  write(STORAGE.current, user);
+  location.href = "index.html";
+}
+
+$("loginSubmit").addEventListener("click", doLogin);
+$("password").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+
+  </script>
+</body>
+</html>
