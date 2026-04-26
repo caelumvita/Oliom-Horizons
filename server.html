@@ -13,9 +13,9 @@
       <div class="brand-title">Oliom Horizons<span>Firebase</span></div>
     </a>
     <nav class="main-nav">
-      <a href="index.html" class="btn">Home</a>
+      <a href="server.html" class="btn primary">Games</a>
       <a href="studio.html" class="btn">Studio</a>
-      <a href="server.html" class="btn">Games</a>
+      <a href="index.html" class="btn">Profile</a>
       <a href="rules.html" class="btn">Rules</a>
     </nav>
     <div class="auth-buttons" data-auth></div>
@@ -25,13 +25,24 @@
     <section class="block">
       <h1 style="margin-top:0;">Games</h1>
       <p>Published OHS worlds from Oliom Horizons Studio. Press Play to open the world in the OHS engine.</p>
+
       <div class="server-actions-bar">
         <a class="btn primary" href="studio.html">Create in Studio</a>
         <button id="refreshWorldsBtn" class="btn">Refresh</button>
         <span id="serverStatusLine" class="status-line">Loading games...</span>
       </div>
+
       <div id="worldList" class="server-list">
         <div class="server-empty">Loading games...</div>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>How publishing works</h2>
+      <div class="grid rules-grid">
+        <div class="rule-card"><strong>1. Build</strong><span>Open Studio and create a world with OHS tools.</span></div>
+        <div class="rule-card"><strong>2. Publish</strong><span>Press Publish in the top bar. The world is saved to Firebase.</span></div>
+        <div class="rule-card"><strong>3. Play</strong><span>Published games appear here and open inside the OHS engine.</span></div>
       </div>
     </section>
   </main>
@@ -40,45 +51,78 @@
 
   <script type="module">
     import {
-      db, renderHeaderAuth, escapeHtml, checkDeviceBanOrBlock, collection, getDocs, query, orderBy
+      db, renderHeaderAuth, escapeHtml, collection, getDocs, query, orderBy
     } from './firebase-core.js';
 
     await renderHeaderAuth();
-    await checkDeviceBanOrBlock();
 
     const worldList = document.getElementById('worldList');
     const statusLine = document.getElementById('serverStatusLine');
 
-    async function renderWorlds() {
-      const q = query(collection(db, 'worlds'), orderBy('createdAt', 'desc'));
-      const snap = await getDocs(q);
-      const worlds = [];
-      snap.forEach(d => worlds.push({ id:d.id, ...d.data() }));
+    function sortByCreatedDesc(worlds) {
+      return worlds.sort((a,b) => {
+        const at = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const bt = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return bt - at;
+      });
+    }
 
-      statusLine.textContent = `${worlds.length} published game${worlds.length === 1 ? '' : 's'}`;
-
-      if (!worlds.length) {
-        worldList.innerHTML = '<div class="server-empty">No published games yet. Create one in Studio and press Publish.</div>';
-        return;
+    async function fetchWorlds() {
+      try {
+        const q = query(collection(db, 'worlds'), orderBy('createdAt', 'desc'));
+        const snap = await getDocs(q);
+        const worlds = [];
+        snap.forEach(d => worlds.push({ id:d.id, ...d.data() }));
+        return worlds;
+      } catch (err) {
+        console.warn('Ordered world query failed, retrying simple query:', err);
+        const snap = await getDocs(collection(db, 'worlds'));
+        const worlds = [];
+        snap.forEach(d => worlds.push({ id:d.id, ...d.data() }));
+        return sortByCreatedDesc(worlds);
       }
+    }
 
-      worldList.innerHTML = worlds.map(w => `
-        <div class="server-card">
-          <div class="server-top">
-            <div>
-              <div class="server-name">${escapeHtml(w.title || 'Untitled OHS World')}</div>
-              <div class="server-meta">by ${escapeHtml(w.ownerName || 'Unknown')} · ${escapeHtml(w.engine || 'OHS')}</div>
+    async function renderWorlds() {
+      worldList.innerHTML = '<div class="server-empty">Loading games...</div>';
+      statusLine.textContent = 'Loading games...';
+
+      try {
+        const worlds = await fetchWorlds();
+        statusLine.textContent = `${worlds.length} published game${worlds.length === 1 ? '' : 's'}`;
+
+        if (!worlds.length) {
+          worldList.innerHTML = '<div class="server-empty">No published games yet. Create one in Studio and press Publish.</div>';
+          return;
+        }
+
+        worldList.innerHTML = worlds.map(w => `
+          <div class="server-card">
+            <div class="server-top">
+              <div>
+                <div class="server-name">${escapeHtml(w.title || 'Untitled OHS World')}</div>
+                <div class="server-meta">by ${escapeHtml(w.ownerName || 'Unknown')} · ${escapeHtml(w.engine || 'OHS')}</div>
+              </div>
+              <a class="btn primary" href="studio.html?world=${w.id}&play=1">Play</a>
             </div>
-            <a class="btn primary" href="studio.html?world=${w.id}&play=1">Play</a>
+            <div class="server-description">${escapeHtml(w.description || 'No description.')}</div>
+            <div class="server-badges">
+              <span class="badge">${w.playerCount || 0} / ${w.maxPlayers || 8} players</span>
+              <span class="badge">${escapeHtml(w.status || 'published')}</span>
+              <span class="badge">OHS world</span>
+            </div>
           </div>
-          <div class="server-description">${escapeHtml(w.description || 'No description.')}</div>
-          <div class="server-badges">
-            <span class="badge">${w.playerCount || 0} / ${w.maxPlayers || 8} players</span>
-            <span class="badge">${escapeHtml(w.status || 'published')}</span>
-            <span class="badge">OHS world</span>
+        `).join('');
+      } catch (err) {
+        console.error('Could not load games:', err);
+        statusLine.textContent = 'Failed to load games.';
+        worldList.innerHTML = `
+          <div class="server-empty">
+            Could not load games: ${escapeHtml(err.message)}<br><br>
+            Check Firestore Rules and make sure the rules include <strong>worlds</strong> read access.
           </div>
-        </div>
-      `).join('');
+        `;
+      }
     }
 
     document.getElementById('refreshWorldsBtn').addEventListener('click', renderWorlds);
