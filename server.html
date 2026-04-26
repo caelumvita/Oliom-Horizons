@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Oliom Horizons — Servers</title>
+  <title>Oliom Horizons — Games</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -16,7 +16,7 @@
     <nav class="main-nav">
       <a href="index.html" class="btn">Home</a>
       <a href="studio.html" class="btn">Studio</a>
-      <a href="server.html" class="btn">Servers</a>
+      <a href="server.html" class="btn">Games</a>
       <a href="rules.html" class="btn">Rules</a>
     </nav>
     <div class="auth-buttons" data-auth></div>
@@ -25,49 +25,24 @@
   <main>
 
     <section class="block">
-      <h1 style="margin-top:0;">Published Servers</h1>
-      <p>This page shows Firestore server documents. Later it will show real published games/worlds.</p>
-      <div class="server-actions-bar">
-        <button id="openCreateServerBtn" class="btn primary">Create Server</button>
-        <button id="refreshServersBtn" class="btn">Refresh</button>
-        <span id="serverStatusLine" class="status-line">Loading servers...</span>
+      <h1 style="margin-top:0;">Games</h1>
+      <p id="pageInfo">Published Oliom Horizons games. Open a game to play it in this page.</p>
+      <div id="browserControls" class="server-actions-bar">
+        <button id="refreshWorldsBtn" class="btn">Refresh</button>
+        <span id="serverStatusLine" class="status-line">Loading games...</span>
       </div>
-      <div class="user-search-box" style="margin-bottom:12px;">
-        <input type="text" id="serverSearchInput" placeholder="Search servers by name..." />
-        <button id="clearServerSearchBtn" class="btn">Clear search</button>
-      </div>
-      <div id="multiplayerList" class="server-list"><div class="server-empty">Loading servers...</div></div>
+      <div id="worldList" class="server-list"><div class="server-empty">Loading games...</div></div>
     </section>
 
-    <div id="createServerModal" class="modal">
-      <div class="modal-overlay" id="createServerOverlay"></div>
-      <div class="modal-card">
-        <button class="btn modal-close" id="closeCreateServerBtn">✕</button>
-        <h2 style="margin-top:0;">Create Server</h2>
-        <p class="tiny">Create a Firestore placeholder server for a published world.</p>
-        <div class="server-form">
-          <label>Server name<input id="serverNameInput" type="text" maxlength="40" placeholder="My OH Server" /></label>
-          <label>Description<textarea id="serverDescInput" maxlength="220" placeholder="Describe your server..."></textarea></label>
-          <div class="server-form-grid">
-            <label>Max players
-              <select id="serverMaxPlayersInput">
-                <option value="2">2</option><option value="4">4</option><option value="6">6</option><option value="8" selected>8</option><option value="12">12</option>
-              </select>
-            </label>
-            <label>Visibility
-              <select id="serverVisibilityInput">
-                <option value="public" selected>Public</option><option value="private">Private</option>
-              </select>
-            </label>
-          </div>
-          <div class="row-actions">
-            <button id="createServerSubmitBtn" class="btn primary">Create</button>
-            <button id="cancelCreateServerBtn" class="btn">Cancel</button>
-            <span id="createServerMsg" class="tiny"></span>
-          </div>
-        </div>
+    <section id="gameSection" class="block" style="display:none;">
+      <h2 id="gameTitle">Game</h2>
+      <p id="gameDescription" class="comment-info"></p>
+      <div class="row-actions" style="margin-bottom:10px;">
+        <a href="server.html" class="btn">Back to Games</a>
+        <span class="tiny">WASD / Arrow keys to move. This is the first playable prototype.</span>
       </div>
-    </div>
+      <div id="gameView" class="game-view"></div>
+    </section>
 
   </main>
   <footer>© 2026 Oliom Horizons — Firebase · <a href="rules.html" style="color:white;text-decoration:underline;">Rules</a></footer>
@@ -75,94 +50,121 @@
 
 import {
   $, db, renderHeaderAuth, authReady, ensureProfile, escapeHtml,
-  collection, addDoc, getDocs, query, orderBy, serverTimestamp
+  collection, getDocs, query, orderBy, doc, getDoc, avatarHex
 } from "./firebase-core.js";
+
 await renderHeaderAuth();
+const user = await authReady();
+const profile = user ? await ensureProfile(user) : null;
 
-let currentUser = await authReady();
-let currentProfile = currentUser ? await ensureProfile(currentUser) : null;
+const params = new URLSearchParams(location.search);
+const worldId = params.get("world");
 
-function openCreateServer() {
-  if (!currentUser) {
-    alert("Create an account first.");
-    location.href = "signin.html";
-    return;
-  }
-  $("serverNameInput").value = `${currentProfile.username}'s server`;
-  $("serverDescInput").value = "";
-  $("serverMaxPlayersInput").value = "8";
-  $("serverVisibilityInput").value = "public";
-  $("createServerMsg").textContent = "";
-  $("createServerModal").classList.add("show");
-}
-
-async function createServer() {
-  if (!currentUser || !currentProfile) {
-    $("createServerMsg").textContent = "Sign in first.";
-    return;
-  }
-  const name = $("serverNameInput").value.trim().slice(0, 40);
-  if (!name) {
-    $("createServerMsg").textContent = "Type a server name.";
-    return;
-  }
-  await addDoc(collection(db, "servers"), {
-    name,
-    description: $("serverDescInput").value.trim().slice(0, 220),
-    ownerId: currentUser.uid,
-    ownerName: currentProfile.username,
-    maxPlayers: Number($("serverMaxPlayersInput").value || 8),
-    visibility: $("serverVisibilityInput").value,
-    playerCount: 0,
-    status: "draft",
-    createdAt: serverTimestamp()
-  });
-  $("createServerModal").classList.remove("show");
-  await renderServers();
-}
-
-async function renderServers() {
-  const queryText = $("serverSearchInput").value.trim().toLowerCase();
-  const q = query(collection(db, "servers"), orderBy("createdAt", "desc"));
+async function renderWorlds() {
+  const q = query(collection(db, "worlds"), orderBy("createdAt", "desc"));
   const snap = await getDocs(q);
-  const servers = [];
-  snap.forEach(d => servers.push({ id: d.id, ...d.data() }));
-  const filtered = queryText ? servers.filter(s => (s.name || "").toLowerCase().includes(queryText)) : servers;
-  $("serverStatusLine").textContent = `${filtered.length} server${filtered.length === 1 ? "" : "s"}`;
+  const worlds = [];
+  snap.forEach(d => worlds.push({ id: d.id, ...d.data() }));
 
-  const box = $("multiplayerList");
-  if (!filtered.length) {
-    box.innerHTML = '<div class="server-empty">No servers yet.</div>';
+  $("serverStatusLine").textContent = `${worlds.length} published game${worlds.length === 1 ? "" : "s"}`;
+  const box = $("worldList");
+  if (!worlds.length) {
+    box.innerHTML = '<div class="server-empty">No published games yet. Create one in Studio.</div>';
     return;
   }
-  box.innerHTML = filtered.map(server => `
+
+  box.innerHTML = worlds.map(w => `
     <div class="server-card">
       <div class="server-top">
         <div>
-          <div class="server-name">${escapeHtml(server.name || "Untitled server")}</div>
-          <div class="server-meta">Owner: ${escapeHtml(server.ownerName || "Unknown")} · ${escapeHtml(server.visibility || "public")}</div>
+          <div class="server-name">${escapeHtml(w.title || "Untitled World")}</div>
+          <div class="server-meta">by ${escapeHtml(w.ownerName || "Unknown")} · ${escapeHtml(w.status || "published")}</div>
         </div>
-        <button class="btn primary" type="button" onclick="alert('Real joining will come later.')">Join</button>
+        <a class="btn primary" href="server.html?world=${w.id}">Play</a>
       </div>
-      <div class="server-description">${escapeHtml(server.description || "No description.")}</div>
+      <div class="server-description">${escapeHtml(w.description || "No description.")}</div>
       <div class="server-badges">
-        <span class="badge">${server.playerCount || 0} / ${server.maxPlayers || 8} players</span>
-        <span class="badge">${escapeHtml(server.visibility || "public")}</span>
-        <span class="badge">${escapeHtml(server.status || "draft")}</span>
+        <span class="badge">${w.playerCount || 0} / ${w.maxPlayers || 8} players</span>
+        <span class="badge">Published world</span>
       </div>
     </div>
   `).join("");
 }
 
-$("openCreateServerBtn").addEventListener("click", openCreateServer);
-$("refreshServersBtn").addEventListener("click", renderServers);
-$("clearServerSearchBtn").addEventListener("click", () => { $("serverSearchInput").value = ""; renderServers(); });
-$("serverSearchInput").addEventListener("input", renderServers);
-$("closeCreateServerBtn").addEventListener("click", () => $("createServerModal").classList.remove("show"));
-$("cancelCreateServerBtn").addEventListener("click", () => $("createServerModal").classList.remove("show"));
-$("createServerOverlay").addEventListener("click", () => $("createServerModal").classList.remove("show"));
-$("createServerSubmitBtn").addEventListener("click", createServer);
-await renderServers();
+async function playWorld(id) {
+  const snap = await getDoc(doc(db, "worlds", id));
+  if (!snap.exists()) {
+    $("worldList").innerHTML = '<div class="server-empty">Game not found.</div>';
+    return;
+  }
+  const world = { id: snap.id, ...snap.data() };
+  $("browserControls").style.display = "none";
+  $("worldList").style.display = "none";
+  $("pageInfo").textContent = "You are playing a published game.";
+  $("gameSection").style.display = "block";
+  $("gameTitle").textContent = world.title || "Untitled World";
+  $("gameDescription").textContent = world.description || "";
+
+  const view = $("gameView");
+  const objects = world.worldData?.objects || [];
+  view.innerHTML = "";
+  objects.forEach(obj => {
+    const el = document.createElement("div");
+    el.className = "world-object";
+    el.style.left = obj.x + "px";
+    el.style.top = obj.y + "px";
+    el.style.width = obj.w + "px";
+    el.style.height = obj.h + "px";
+    el.style.background = obj.color || "#7ed957";
+    el.textContent = obj.type === "goal" ? "Goal" : "";
+    view.appendChild(el);
+  });
+
+  const player = document.createElement("div");
+  player.className = "player-dot";
+  player.style.background = avatarHex(profile?.avatarColor || "green");
+  view.appendChild(player);
+
+  let px = 80, py = 300;
+  const keys = new Set();
+
+  function updatePlayer() {
+    player.style.left = px + "px";
+    player.style.top = py + "px";
+  }
+  updatePlayer();
+
+  window.addEventListener("keydown", e => keys.add(e.key.toLowerCase()));
+  window.addEventListener("keyup", e => keys.delete(e.key.toLowerCase()));
+
+  function step() {
+    const speed = 3;
+    if (keys.has("a") || keys.has("arrowleft")) px -= speed;
+    if (keys.has("d") || keys.has("arrowright")) px += speed;
+    if (keys.has("w") || keys.has("arrowup")) py -= speed;
+    if (keys.has("s") || keys.has("arrowdown")) py += speed;
+    const rect = view.getBoundingClientRect();
+    px = Math.max(17, Math.min(rect.width - 17, px));
+    py = Math.max(17, Math.min(rect.height - 17, py));
+
+    for (const obj of objects) {
+      if (obj.type === "goal" && px > obj.x && px < obj.x + obj.w && py > obj.y && py < obj.y + obj.h) {
+        $("gameDescription").textContent = "You reached the goal! This is the first game prototype.";
+      }
+    }
+    updatePlayer();
+    requestAnimationFrame(step);
+  }
+  step();
+}
+
+$("refreshWorldsBtn").addEventListener("click", renderWorlds);
+
+if (worldId) {
+  await playWorld(worldId);
+} else {
+  await renderWorlds();
+}
 
   </script>
 </body>
