@@ -350,7 +350,8 @@
     <button id="redoBtn" class="secondary compactBtn" title="Redo">→</button>
     <button id="saveBtn" class="secondary">Save</button>
     <button id="loadBtn" class="secondary">Load</button>
-    <button id="publishBtn" class="secondary">Publish</button>
+    <button id="publishBtn">Publish</button>
+    <button id="openGamesBtn" class="secondary">Games</button>
     <button id="clearBtn" class="danger">Clear</button>
   </div>
 </div>
@@ -473,21 +474,102 @@
 
 <script type="module">
 import * as THREE from 'https://unpkg.com/three@0.165.0/build/three.module.js';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
-  db,
-  authReady,
-  ensureProfile,
-  collection,
-  addDoc,
+  getFirestore,
   doc,
   getDoc,
-  serverTimestamp,
-  checkDeviceBanOrBlock,
-  checkAccountStatusOrBlock,
-  touchUserDevice
-} from './firebase-core.js';
+  setDoc,
+  collection,
+  addDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-await checkDeviceBanOrBlock();
+const firebaseConfig = {
+  apiKey: "AIzaSyBbNRWbaSQfz8_5Wb0wqr7fpI2tuiybSNs",
+  authDomain: "oliom-horizons.firebaseapp.com",
+  projectId: "oliom-horizons",
+  storageBucket: "oliom-horizons.firebasestorage.app",
+  messagingSenderId: "123365117413",
+  appId: "1:123365117413:web:9c3893c2095f02305df30c",
+  measurementId: "G-RMMT35LFH4"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const firebaseAuth = getAuth(firebaseApp);
+const firebaseDb = getFirestore(firebaseApp);
+
+function firebaseAuthReady(){
+  return new Promise(resolve=>{
+    const unsub=onAuthStateChanged(firebaseAuth,user=>{unsub();resolve(user);});
+  });
+}
+
+function firebaseNormalize(name){
+  return String(name||"").trim().toLowerCase().replace(/\s+/g,"_");
+}
+
+function firebaseDeviceId(){
+  let id=localStorage.getItem("oh_device_id_v1");
+  if(!id){
+    id="dev_"+crypto.randomUUID();
+    localStorage.setItem("oh_device_id_v1",id);
+  }
+  return id;
+}
+
+async function firebaseEnsureProfile(user){
+  const ref=doc(firebaseDb,"users",user.uid);
+  const snap=await getDoc(ref);
+  if(snap.exists())return {id:user.uid,...snap.data()};
+  const username=(user.displayName||user.email?.split("@")[0]||"Player").trim().slice(0,24);
+  const profile={
+    uid:user.uid,
+    username,
+    usernameLower:firebaseNormalize(username),
+    email:user.email||"",
+    avatar:"",
+    avatarColor:"green",
+    bio:"",
+    status:"active",
+    lastDeviceId:firebaseDeviceId(),
+    createdAt:serverTimestamp(),
+    updatedAt:serverTimestamp()
+  };
+  await setDoc(ref,profile,{merge:true});
+  return {id:user.uid,...profile};
+}
+
+async function firebaseCheckDeviceBan(){
+  try{
+    const ref=doc(firebaseDb,"deviceBans",firebaseDeviceId());
+    const snap=await getDoc(ref);
+    if(snap.exists() && snap.data()?.active!==false){
+      document.body.innerHTML='<main style="max-width:720px;margin:60px auto;padding:18px;font-family:Inter,Arial,sans-serif;"><section style="border:1px solid #d6efcf;border-radius:18px;padding:18px;background:white;"><h1 style="color:#3f922e;">This device is banned</h1><p style="color:#667868;">'+String(snap.data()?.reason||"Access is blocked on this device.")+'</p><a href="index.html">Back to Home</a></section></main>';
+      return true;
+    }
+  }catch(err){console.warn("Device ban check failed",err);}
+  return false;
+}
+
+async function firebaseRequirePublishUser(){
+  if(await firebaseCheckDeviceBan())return null;
+  const user=await firebaseAuthReady();
+  if(!user){
+    alert("Please log in before publishing.");
+    location.href="login.html";
+    return null;
+  }
+  const profile=await firebaseEnsureProfile(user);
+  if(profile.status==="account_deleted"||profile.status==="banned"){
+    alert(profile.banMessage||profile.banReason||"This account is blocked by moderation.");
+    return null;
+  }
+  await setDoc(doc(firebaseDb,"users",user.uid),{lastDeviceId:firebaseDeviceId(),lastSeenAt:serverTimestamp()},{merge:true});
+  return {user,profile};
+}
+
 const wrap=document.getElementById('game');
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
@@ -533,6 +615,7 @@ const redoBtn=document.getElementById('redoBtn');
 const saveBtn=document.getElementById('saveBtn');
 const loadBtn=document.getElementById('loadBtn');
 const publishBtn=document.getElementById('publishBtn');
+const openGamesBtn=document.getElementById('openGamesBtn');
 const clearBtn=document.getElementById('clearBtn');
 const selectTool=document.getElementById('selectTool');
 const moveTool=document.getElementById('moveTool');
@@ -1157,12 +1240,12 @@ function bind(id,axis){document.getElementById(id).addEventListener('change',e=>
 bind('xInput','x');bind('yInput','y');bind('zInput','z');
 document.querySelectorAll('[data-nudge]').forEach(b=>b.addEventListener('click',()=>{if(!selected)return;const [x,y,z]=b.dataset.nudge.split(',').map(Number);const step=Math.max(.01,parseFloat(snapStepInput.value)||1);getSelection().forEach(o=>{o.position.x=snap(o.position.x+x*step);o.position.y=snap(o.position.y+y*step);o.position.z=snap(o.position.z+z*step);o.userData.velocity.set(0,0,0)});refreshProps();updateBox();updateGizmo()}));
 rulerInput.addEventListener('change',e=>grid.visible=e.target.checked);
-undoBtn.addEventListener('click',undo);redoBtn.addEventListener('click',redo);saveBtn.addEventListener('click',saveScene);loadBtn.addEventListener('click',loadScene);publishBtn.addEventListener('click',publishOhsWorld);
+undoBtn.addEventListener('click',undo);redoBtn.addEventListener('click',redo);saveBtn.addEventListener('click',saveScene);loadBtn.addEventListener('click',loadScene);publishBtn.addEventListener('click',publishOhsWorld);openGamesBtn.addEventListener('click',()=>location.href='server.html');
 
 function saveScene(){syncActiveScript();localStorage.setItem('oliomStudioScene',JSON.stringify(objects.map(serializeObj)));saveOhsScripts();toast('Scene saved')}
 function loadScene(){const raw=localStorage.getItem('oliomStudioScene');if(!raw){toast('No saved scene');return}for(const o of [...objects]){scene.remove(o);clearObject3D(o);o.geometry?.dispose?.();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose?.());else o.material.dispose?.();}}objects.length=0;JSON.parse(raw).forEach(d=>makeObj(d));loadOhsScripts();selectObject(null);refreshExplorer();pushHistory();toast('Scene loaded')}
 
-function clearCurrentSceneForLoad(){
+function ohsClearSceneForFirebaseLoad(){
  for(const o of [...objects]){
   scene.remove(o);
   clearObject3D(o);
@@ -1176,24 +1259,24 @@ function clearCurrentSceneForLoad(){
  selectObject(null);
 }
 
-function getOhsWorldData(){
+function ohsGetWorldData(){
  syncActiveScript();
  return {
-  engine:'OHS',
-  engineVersion:'v19-white-green',
+  engine:"OHS",
+  engineVersion:"v19-white-green",
   objects:objects.map(serializeObj),
-  scripts:ohsScripts.map(s=>({name:s.name||'Script.ohs',code:s.code||''})),
+  scripts:ohsScripts.map(s=>({name:s.name||"Script.ohs",code:s.code||""})),
   savedAt:Date.now()
  };
 }
 
-function loadOhsWorldData(worldData){
+function ohsLoadWorldData(worldData){
  const data=worldData||{};
- clearCurrentSceneForLoad();
+ ohsClearSceneForFirebaseLoad();
  const list=Array.isArray(data.objects)?data.objects:[];
  list.forEach(d=>makeObj(d));
  if(Array.isArray(data.scripts)&&data.scripts.length){
-  ohsScripts=data.scripts.map((s,i)=>({name:s.name||`Script${i+1}.ohs`,code:s.code||''}));
+  ohsScripts=data.scripts.map((s,i)=>({name:s.name||`Script${i+1}.ohs`,code:s.code||""}));
   activeScriptIndex=0;
   renderScriptTabs();
   loadActiveScript();
@@ -1204,82 +1287,79 @@ function loadOhsWorldData(worldData){
  selectObject(null);
  refreshExplorer();
  pushHistory();
- toast('World loaded');
+ toast("World loaded");
 }
 
 async function publishOhsWorld(){
- if(playMode){toast('Stop test before publishing');return}
+ if(playMode){toast("Stop Play Test before publishing");return}
+ const status=document.getElementById("firebaseStatus");
  syncActiveScript();
- const status=document.getElementById('firebaseStatus');
- const user=await authReady();
- if(!user){
-  alert('Please sign in before publishing.');
-  location.href='login.html';
-  return;
- }
- if(await checkAccountStatusOrBlock(user))return;
- await touchUserDevice(user);
- const profile=await ensureProfile(user);
- const title=prompt('World title:', localStorage.getItem('oliomLastWorldTitle')||'My OHS World');
+ const authPack=await firebaseRequirePublishUser();
+ if(!authPack)return;
+ const {user,profile}=authPack;
+ const title=prompt("World title:",localStorage.getItem("oliomLastWorldTitle")||"My OHS World");
  if(!title)return;
- localStorage.setItem('oliomLastWorldTitle',title);
- const description=prompt('World description:', 'Created in Oliom Horizons Studio with OHS scripts.')||'';
+ localStorage.setItem("oliomLastWorldTitle",title);
+ const description=prompt("World description:","Created in Oliom Horizons Studio with OHS scripts.")||"";
+
  publishBtn.disabled=true;
- publishBtn.textContent='Publishing...';
- if(status)status.textContent='Publishing to Firebase...';
+ publishBtn.textContent="Publishing...";
+ if(status)status.textContent="Publishing to Firebase...";
+
  try{
-  const ref=await addDoc(collection(db,'worlds'),{
-   title:title.trim().slice(0,64)||'Untitled OHS World',
-   titleLower:(title.trim().slice(0,64)||'Untitled OHS World').toLowerCase(),
+  const ref=await addDoc(collection(firebaseDb,"worlds"),{
+   title:title.trim().slice(0,64)||"Untitled OHS World",
+   titleLower:(title.trim().slice(0,64)||"Untitled OHS World").toLowerCase(),
    description:description.trim().slice(0,280),
    ownerId:user.uid,
-   ownerName:profile?.username||user.email||'Player',
-   ownerAvatar:profile?.avatar||'',
-   ownerAvatarColor:profile?.avatarColor||'green',
-   visibility:'public',
+   ownerName:profile?.username||user.email||"Player",
+   ownerAvatar:profile?.avatar||"",
+   ownerAvatarColor:profile?.avatarColor||"green",
+   visibility:"public",
    maxPlayers:8,
    playerCount:0,
-   status:'published',
-   engine:'OHS',
-   worldData:getOhsWorldData(),
+   status:"published",
+   engine:"OHS",
+   worldData:ohsGetWorldData(),
    createdAt:serverTimestamp(),
    updatedAt:serverTimestamp()
   });
-  toast('Published to Games');
-  if(status)status.textContent='Published · open Games';
-  if(confirm('Published! Open Games page now?')){
-    location.href='server.html?justPublished='+encodeURIComponent(ref.id);
+  toast("Published to Games");
+  if(status)status.textContent="Published · Games";
+  if(confirm("Published! Open Games page now?")){
+    location.href="server.html?published="+encodeURIComponent(ref.id);
   }
  }catch(err){
-  console.error('Publish failed:',err);
-  if(status)status.textContent='Publish failed';
-  alert('Publish failed: '+err.message+'\n\nMost likely fix: open Firebase > Firestore Database > Rules and paste the new firestore-rules.txt.');
+  console.error("OHS publish failed:",err);
+  if(status)status.textContent="Publish failed";
+  alert("Publish failed: "+err.message+"\n\nOpen Firebase > Firestore Database > Rules and paste firestore-rules.txt from the newest ZIP.");
  }finally{
   publishBtn.disabled=false;
-  publishBtn.textContent='Publish';
+  publishBtn.textContent="Publish";
  }
 }
 
 async function loadPublishedWorldFromUrl(){
  const params=new URLSearchParams(location.search);
- const worldId=params.get('world');
+ const worldId=params.get("world");
  if(!worldId)return;
  try{
-  const snap=await getDoc(doc(db,'worlds',worldId));
+  const snap=await getDoc(doc(firebaseDb,"worlds",worldId));
   if(!snap.exists()){
-   toast('World not found');
+   toast("World not found");
    return;
   }
   const world=snap.data();
-  loadOhsWorldData(world.worldData);
-  document.title=(world.title||'OHS World')+' — Oliom Horizons';
-  const playDirect=params.get('play')==='1';
-  if(playDirect){
-   setTimeout(()=>startPlayerTest(),500);
+  ohsLoadWorldData(world.worldData);
+  document.title=(world.title||"OHS World")+" — Oliom Horizons";
+  const status=document.getElementById("firebaseStatus");
+  if(status)status.textContent="Loaded published game";
+  if(params.get("play")==="1"){
+   setTimeout(()=>{try{startPlayerTest()}catch(err){console.error(err);toast("Play load error: "+err.message)}},650);
   }
  }catch(err){
-  console.error(err);
-  alert('Failed to load world: '+err.message);
+  console.error("Load published world failed:",err);
+  alert("Failed to load world: "+err.message);
  }
 }
 
