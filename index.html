@@ -1,0 +1,251 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oliom Horizons</title>
+  <link rel="icon" href="https://lens.usercontent.google.com/image?vsrid=CI2AqfH36NfUlAEQAhgBIiRmOGY1YzcyNy1jYWFiLTQwMzctYTkyNy0xMzk1YjY5NmNkN2EyeyICZW4oBEJzCi5sZmUtZHVtbXk6OGNhZjVjOWEtMjgxNS00OTcxLTg2NTMtNzM1MjczY2Q0MjExEkEKPy9ibnMvZW4vYm9yZy9lbi9ibnMvbGVucy1mcm9udGVuZC1hcGkvcHJvZC5sZW5zLWZyb250ZW5kLWFwaS85Njjm4cqmuvmTAw&gsessionid=2aLWyxq5m4KWpfl1UsANwGOJNsA0M2MiDBFRrn8mSEGg4WvX44NgkQ" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="side-nav">
+    <a href="#about" class="about">About</a>
+    <a href="#community" class="community">Community</a>
+  </div>
+
+  <header>
+    <div class="header-brand fade-up">
+      <img src="https://lens.usercontent.google.com/image?vsrid=CI2AqfH36NfUlAEQAhgBIiRmOGY1YzcyNy1jYWFiLTQwMzctYTkyNy0xMzk1YjY5NmNkN2EyeyICZW4oBEJzCi5sZmUtZHVtbXk6OGNhZjVjOWEtMjgxNS00OTcxLTg2NTMtNzM1MjczY2Q0MjExEkEKPy9ibnMvZW4vYm9yZy9lbi9ibnMvbGVucy1mcm9udGVuZC1hcGkvcHJvZC5sZW5zLWZyb250ZW5kLWFwaS85Njjm4cqmuvmTAw&gsessionid=2aLWyxq5m4KWpfl1UsANwGOJNsA0M2MiDBFRrn8mSEGg4WvX44NgkQ" alt="Header logo" />
+      <div>
+        <strong>Oliom Horizons</strong>
+        <span>Classic local prototype</span>
+      </div>
+    </div>
+
+    <div class="auth-buttons fade-up delay-1" id="guestNav">
+      <a href="login.html" class="btn">Sign in</a>
+      <a href="signup.html" class="btn primary">Sign up</a>
+    </div>
+
+    <div class="auth-buttons fade-up delay-1" id="userNav" hidden>
+      <a href="game.html" class="btn primary">Play</a>
+      <button id="logoutBtn" class="btn">Log out</button>
+    </div>
+  </header>
+
+  <main>
+    <p class="welcome-text fade-up delay-1" id="welcomeText">Welcome Guest</p>
+
+    <div class="user-panel fade-up delay-1">
+      <img id="userAvatar" alt="Avatar" class="user-avatar" />
+      <div style="flex:1;">
+        <div class="user-name-label"><strong>Account:</strong></div>
+        <div id="userNameDisplay" class="user-name-value">Guest</div>
+        <div id="myBioLine" class="tiny" style="margin-top:4px; display:none;"></div>
+      </div>
+      <button id="openEditProfile" class="btn" style="display:none;">Edit profile</button>
+    </div>
+
+    <section id="editProfileBox" class="block fade-up delay-2" style="display:none;">
+      <h2>Edit profile</h2>
+      <p class="tiny" id="avatarHint">Choose an avatar and write a short bio (max 200 chars).</p>
+
+      <div id="avatarGrid" class="avatar-grid"></div>
+
+      <label class="tiny" for="bioInput">Bio</label>
+      <textarea id="bioInput" maxlength="200" placeholder="Write something about your account..."></textarea>
+      <div class="tiny" id="bioCount">0/200</div>
+
+      <div class="row-actions" style="margin-top:12px;">
+        <button id="saveProfileBtn" class="btn primary">Save</button>
+        <button id="closeEditProfileBtn" class="btn">Close</button>
+        <span id="saveProfileMsg" class="tiny"></span>
+      </div>
+    </section>
+
+    <section id="community" class="block fade-up delay-2">
+      <h2>Player search</h2>
+      <div class="user-search-box">
+        <input type="text" id="userSearchInput" placeholder="Type username..." />
+        <button id="userSearchBtn" class="btn">Search</button>
+      </div>
+
+      <div id="userSearchResults" class="user-search-results">
+        <p class="comment-empty">Type a name to search players.</p>
+      </div>
+
+      <div class="friend-box">
+        <h3 style="margin-top:0; color:#356c39;">Friends</h3>
+        <div id="friendsList">
+          <p class="comment-empty">Friends will return when the online version is connected.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="block fade-up delay-2">
+      <h2>Multiplayer</h2>
+      <p class="comment-info">
+        The local game stays in <strong>game.html</strong>. Shared servers and live sessions will be added when Firebase is connected.
+      </p>
+
+      <div class="server-actions-bar">
+        <button class="btn">Create Server</button>
+        <button class="btn">Refresh</button>
+        <span class="status-line">Phase 2 placeholder</span>
+      </div>
+
+      <div class="server-list">
+        <div class="server-empty">No online servers yet in the local build.</div>
+      </div>
+    </section>
+
+    <img src="https://lens.usercontent.google.com/image?vsrid=CL6b6c_p-IrvzQEQAhgBIiRjYWEzYzg3NC0wYmU1LTQ1OTItOTQ4My0zYWM1NjJlNWIyNjkyeyICZW4oCkJzCi5sZmUtZHVtbXk6ZjZmODViN2YtMzQ4OS00ZWQ3LTk2MWYtN2QwZGEzM2EyM2EzEkEKPy9ibnMvZW4vYm9yZy9lbi9ibnMvbGVucy1mcm9udGVuZC1hcGkvcHJvZC5sZW5zLWZyb250ZW5kLWFwaS80NDj2u73GuvmTAw&gsessionid=RmwlzTBKvg3CEVQQm3YSFh-CancEE_wiYE8DbcazIJu9JpkmvcG52w" alt="Oliom Horizons" class="main-logo fade-up delay-2" />
+
+    <div id="about">
+      <p class="fade-up delay-2">
+        Welcome to the world of Oliom Horizons. This version keeps the page closer to a classic game site layout while keeping the account system local and easy to test.
+      </p>
+      <p class="fade-up delay-2">
+        The profile, avatar selection, and basic player data are stored in your browser for now. Later, the same structure can be moved to Firebase.
+      </p>
+    </div>
+  </main>
+
+  <footer>© 2026 Oliom Horizons — local prototype</footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    const guestNav = document.getElementById('guestNav');
+    const userNav = document.getElementById('userNav');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const welcomeText = document.getElementById('welcomeText');
+    const userAvatar = document.getElementById('userAvatar');
+    const userNameDisplay = document.getElementById('userNameDisplay');
+    const myBioLine = document.getElementById('myBioLine');
+    const openEditProfileBtn = document.getElementById('openEditProfile');
+    const editProfileBox = document.getElementById('editProfileBox');
+    const avatarGrid = document.getElementById('avatarGrid');
+    const bioInput = document.getElementById('bioInput');
+    const bioCount = document.getElementById('bioCount');
+    const saveProfileBtn = document.getElementById('saveProfileBtn');
+    const closeEditProfileBtn = document.getElementById('closeEditProfileBtn');
+    const saveProfileMsg = document.getElementById('saveProfileMsg');
+    const userSearchInput = document.getElementById('userSearchInput');
+    const userSearchBtn = document.getElementById('userSearchBtn');
+    const userSearchResults = document.getElementById('userSearchResults');
+
+    let selectedAvatar = null;
+
+    function renderUserCard(user) {
+      if (!user) {
+        guestNav.hidden = false;
+        userNav.hidden = true;
+        userAvatar.src = OH.AVATAR_OPTIONS[0];
+        welcomeText.textContent = 'Welcome Guest';
+        userNameDisplay.textContent = 'Guest';
+        myBioLine.style.display = 'none';
+        openEditProfileBtn.style.display = 'none';
+        return;
+      }
+      guestNav.hidden = true;
+      userNav.hidden = false;
+      userAvatar.src = user.avatar;
+      welcomeText.textContent = `Welcome ${user.username}`;
+      userNameDisplay.textContent = user.username;
+      if (user.bio && user.bio.trim()) {
+        myBioLine.textContent = user.bio.trim();
+        myBioLine.style.display = 'block';
+      } else {
+        myBioLine.style.display = 'none';
+      }
+      openEditProfileBtn.style.display = 'inline-block';
+    }
+
+    function buildAvatarGrid(selectedUrl) {
+      avatarGrid.innerHTML = '';
+      OH.AVATAR_OPTIONS.forEach((url) => {
+        const cell = document.createElement('div');
+        cell.className = 'avatar-option' + (url === selectedUrl ? ' selected' : '');
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = 'Avatar';
+        cell.appendChild(img);
+        cell.addEventListener('click', () => {
+          [...avatarGrid.querySelectorAll('.avatar-option')].forEach((x) => x.classList.remove('selected'));
+          cell.classList.add('selected');
+          selectedAvatar = url;
+        });
+        avatarGrid.appendChild(cell);
+      });
+      selectedAvatar = selectedUrl;
+    }
+
+    function openEditProfile() {
+      const user = OH.getCurrentUser();
+      if (!user) return;
+      editProfileBox.style.display = 'block';
+      saveProfileMsg.textContent = '';
+      bioInput.value = user.bio || '';
+      bioCount.textContent = `${bioInput.value.length}/200`;
+      buildAvatarGrid(user.avatar || OH.AVATAR_OPTIONS[0]);
+      editProfileBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function closeEditProfile() {
+      editProfileBox.style.display = 'none';
+    }
+
+    function renderSearchResults() {
+      const query = userSearchInput.value.trim().toLowerCase();
+      const users = JSON.parse(localStorage.getItem('oh_users_v1') || '[]');
+      const filtered = users.filter((u) => u.usernameLower.includes(query));
+
+      if (!query) {
+        userSearchResults.innerHTML = '<p class="comment-empty">Type a name to search players.</p>';
+        return;
+      }
+      if (!filtered.length) {
+        userSearchResults.innerHTML = '<p class="comment-empty">No players found.</p>';
+        return;
+      }
+      userSearchResults.innerHTML = filtered.map((u) => `
+        <div class="search-card">
+          <img src="${u.avatar}" alt="Avatar" />
+          <div>
+            <div style="font-weight:700; color:#356c39;">${OH.escapeHtml(u.username)}</div>
+            <div class="tiny">${OH.escapeHtml(u.bio || 'No bio yet.')}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    bioInput.addEventListener('input', () => {
+      bioCount.textContent = `${bioInput.value.length}/200`;
+    });
+
+    openEditProfileBtn.addEventListener('click', openEditProfile);
+    closeEditProfileBtn.addEventListener('click', closeEditProfile);
+    userSearchBtn.addEventListener('click', renderSearchResults);
+    userSearchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') renderSearchResults(); });
+
+    saveProfileBtn.addEventListener('click', () => {
+      const updated = OH.updateCurrentUser({ avatar: selectedAvatar || OH.AVATAR_OPTIONS[0], bio: bioInput.value.trim().slice(0, 200) });
+      if (!updated) {
+        saveProfileMsg.textContent = 'Unable to save profile.';
+        return;
+      }
+      renderUserCard(updated);
+      saveProfileMsg.textContent = 'Saved.';
+      setTimeout(() => (saveProfileMsg.textContent = ''), 1200);
+    });
+
+    logoutBtn.addEventListener('click', () => {
+      OH.signOutLocal();
+      window.location.href = 'index.html';
+    });
+
+    renderUserCard(OH.getCurrentUser());
+  </script>
+</body>
+</html>
