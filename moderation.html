@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Oliom Horizons — Moderation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <a href="index.html" class="brand-mini">
+      <img src="https://res.cloudinary.com/duqlfltkd/image/upload/f_auto,q_auto/Logo_3_1_3_1_hrynwk" alt="Oliom Horizons logo" class="brand-logo" />
+      <div class="brand-title">Oliom Horizons<span>Moderation</span></div>
+    </a>
+    <nav class="main-nav">
+      <a href="index.html" class="btn">Home</a>
+      <a href="studio.html" class="btn">Studio</a>
+      <a href="server.html" class="btn">Games</a>
+      <a href="rules.html" class="btn">Rules</a>
+    </nav>
+    <div class="auth-buttons" data-auth></div>
+  </header>
+
+  <main>
+    <section class="block">
+      <h1 style="margin-top:0;">Moderation Panel</h1>
+      <p id="adminStatus">Checking permissions...</p>
+      <p class="comment-info">
+        Only the account with username <strong>CaelumVita</strong> can use these tools.
+      </p>
+    </section>
+
+    <section id="modPanel" class="block" style="display:none;">
+      <h2>Users</h2>
+      <div class="user-search-box">
+        <input id="searchInput" placeholder="Search username..." />
+        <button id="searchBtn" class="btn">Search</button>
+        <button id="refreshBtn" class="btn">Refresh</button>
+      </div>
+      <div id="usersList"><p class="comment-empty">Loading users...</p></div>
+    </section>
+
+    <section id="selectedPanel" class="block" style="display:none;">
+      <h2>Selected User</h2>
+      <div id="selectedInfo" class="comment-info"></div>
+
+      <div class="server-form" style="margin-top:12px;">
+        <label>Reason / message
+          <textarea id="reasonInput" maxlength="300" placeholder="Write a clear moderation reason..."></textarea>
+        </label>
+
+        <div class="row-actions">
+          <button id="warnBtn" class="btn">Give warning</button>
+          <button id="softDeleteBtn" class="btn danger">Remove account</button>
+          <button id="deviceBanBtn" class="btn danger">Device ban</button>
+          <button id="unbanBtn" class="btn">Unban account</button>
+        </div>
+        <p id="actionMsg" class="tiny"></p>
+      </div>
+    </section>
+
+    <section id="warningsPanel" class="block" style="display:none;">
+      <h2>Warnings for selected user</h2>
+      <div id="warningsList"><p class="comment-empty">No warnings loaded.</p></div>
+    </section>
+  </main>
+
+  <footer>© 2026 Oliom Horizons — Moderation</footer>
+
+  <script type="module">
+    import {
+      db, authReady, ensureProfile, renderHeaderAuth, $, escapeHtml, ADMIN_USERNAME,
+      collection, getDocs, query, orderBy, where, limit, doc, setDoc, addDoc, updateDoc, serverTimestamp
+    } from './firebase-core.js';
+
+    await renderHeaderAuth();
+
+    const user = await authReady();
+    const profile = user ? await ensureProfile(user) : null;
+
+    const adminStatus = $('adminStatus');
+    const modPanel = $('modPanel');
+    const selectedPanel = $('selectedPanel');
+    const selectedInfo = $('selectedInfo');
+    const warningsPanel = $('warningsPanel');
+    const usersList = $('usersList');
+    const warningsList = $('warningsList');
+    const actionMsg = $('actionMsg');
+    let selectedUser = null;
+
+    if (!user || profile?.username !== ADMIN_USERNAME) {
+      adminStatus.textContent = 'Access denied. This panel is only for CaelumVita.';
+    } else {
+      adminStatus.textContent = 'Access granted.';
+      modPanel.style.display = 'block';
+      await loadUsers();
+    }
+
+    async function loadUsers() {
+      const search = $('searchInput').value.trim().toLowerCase();
+      const snap = await getDocs(query(collection(db, 'users'), orderBy('usernameLower'), limit(50)));
+      const rows = [];
+      snap.forEach(d => rows.push({ id:d.id, ...d.data() }));
+      const filtered = search ? rows.filter(u => (u.usernameLower || '').includes(search)) : rows;
+
+      if (!filtered.length) {
+        usersList.innerHTML = '<p class="comment-empty">No users found.</p>';
+        return;
+      }
+
+      usersList.innerHTML = filtered.map(u => `
+        <div class="user-result" data-uid="${u.id}">
+          <img src="${u.avatar || ''}" class="user-result-avatar" alt="Avatar">
+          <div class="user-result-info">
+            <div class="user-result-name">${escapeHtml(u.username || 'Player')}</div>
+            <div class="tiny">UID: ${escapeHtml(u.id)} · status: ${escapeHtml(u.status || 'active')}</div>
+            <div class="tiny">Device: ${escapeHtml(u.lastDeviceId || 'unknown')}</div>
+          </div>
+        </div>
+      `).join('');
+
+      [...usersList.querySelectorAll('.user-result')].forEach(el => {
+        el.addEventListener('click', () => {
+          selectedUser = filtered.find(u => u.id === el.dataset.uid);
+          renderSelected();
+        });
+      });
+    }
+
+    function renderSelected() {
+      if (!selectedUser) return;
+      selectedPanel.style.display = 'block';
+      warningsPanel.style.display = 'block';
+      selectedInfo.innerHTML = `
+        <strong>${escapeHtml(selectedUser.username || 'Player')}</strong><br>
+        UID: ${escapeHtml(selectedUser.id)}<br>
+        Email: ${escapeHtml(selectedUser.email || '')}<br>
+        Status: ${escapeHtml(selectedUser.status || 'active')}<br>
+        Device: ${escapeHtml(selectedUser.lastDeviceId || 'unknown')}
+      `;
+      actionMsg.textContent = '';
+      loadWarnings();
+    }
+
+    async function requireReason() {
+      const reason = $('reasonInput').value.trim().slice(0, 300);
+      if (!reason) {
+        actionMsg.textContent = 'Write a reason first.';
+        return null;
+      }
+      return reason;
+    }
+
+    async function addModLog(type, reason) {
+      await addDoc(collection(db, 'modLogs'), {
+        type,
+        reason,
+        targetId: selectedUser.id,
+        targetName: selectedUser.username || 'Player',
+        moderatorId: user.uid,
+        moderatorName: profile.username,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    async function warnUser() {
+      if (!selectedUser) return;
+      const reason = await requireReason();
+      if (!reason) return;
+
+      await addDoc(collection(db, 'warnings'), {
+        targetId: selectedUser.id,
+        targetName: selectedUser.username || 'Player',
+        moderatorId: user.uid,
+        moderatorName: profile.username,
+        reason,
+        active: true,
+        createdAt: serverTimestamp()
+      });
+
+      await addModLog('warning', reason);
+      actionMsg.textContent = 'Warning added.';
+      await loadWarnings();
+    }
+
+    async function softDeleteAccount() {
+      if (!selectedUser) return;
+      const reason = await requireReason();
+      if (!reason) return;
+      if (!confirm('Remove this account from using the site?')) return;
+
+      await updateDoc(doc(db, 'users', selectedUser.id), {
+        status: 'account_deleted',
+        banType: 'account_delete',
+        banReason: reason,
+        banMessage: 'Your Oliom Horizons account was removed by moderation. You may create a new account if your device is not banned.',
+        bannedBy: user.uid,
+        bannedAt: serverTimestamp()
+      });
+
+      await addModLog('account_delete', reason);
+      actionMsg.textContent = 'Account removed. The Firebase Auth user is not physically deleted, but the account is blocked by site moderation.';
+      await loadUsers();
+    }
+
+    async function deviceBan() {
+      if (!selectedUser) return;
+      const reason = await requireReason();
+      if (!reason) return;
+      if (!selectedUser.lastDeviceId) {
+        actionMsg.textContent = 'This user has no saved device id yet.';
+        return;
+      }
+      if (!confirm('Ban this device from account creation/access?')) return;
+
+      await setDoc(doc(db, 'deviceBans', selectedUser.lastDeviceId), {
+        deviceId: selectedUser.lastDeviceId,
+        targetId: selectedUser.id,
+        targetName: selectedUser.username || 'Player',
+        reason,
+        active: true,
+        bannedBy: user.uid,
+        bannedByName: profile.username,
+        createdAt: serverTimestamp()
+      }, { merge:true });
+
+      await updateDoc(doc(db, 'users', selectedUser.id), {
+        status: 'banned',
+        banType: 'device',
+        banReason: reason,
+        banMessage: 'This account and device are banned from Oliom Horizons.',
+        bannedBy: user.uid,
+        bannedAt: serverTimestamp()
+      });
+
+      await addModLog('device_ban', reason);
+      actionMsg.textContent = 'Device ban added.';
+      await loadUsers();
+    }
+
+    async function unbanAccount() {
+      if (!selectedUser) return;
+      await updateDoc(doc(db, 'users', selectedUser.id), {
+        status: 'active',
+        banType: '',
+        banReason: '',
+        banMessage: '',
+        bannedBy: '',
+        bannedAt: null
+      });
+      await addModLog('unban_account', 'Account unbanned');
+      actionMsg.textContent = 'Account unbanned. Device bans must be removed manually from Firestore if needed.';
+      await loadUsers();
+    }
+
+    async function loadWarnings() {
+      if (!selectedUser) return;
+      const snap = await getDocs(query(collection(db, 'warnings'), where('targetId', '==', selectedUser.id), orderBy('createdAt', 'desc')));
+      const rows = [];
+      snap.forEach(d => rows.push({ id:d.id, ...d.data() }));
+      if (!rows.length) {
+        warningsList.innerHTML = '<p class="comment-empty">No warnings.</p>';
+        return;
+      }
+      warningsList.innerHTML = rows.map(w => `
+        <div class="comment">
+          <div class="comment-author">Warning by ${escapeHtml(w.moderatorName || 'Moderator')}</div>
+          <div class="comment-text">${escapeHtml(w.reason || '')}</div>
+          <div class="comment-date">${w.createdAt?.toDate ? w.createdAt.toDate().toLocaleString() : ''}</div>
+        </div>
+      `).join('');
+    }
+
+    $('searchBtn').addEventListener('click', loadUsers);
+    $('refreshBtn').addEventListener('click', loadUsers);
+    $('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') loadUsers(); });
+    $('warnBtn').addEventListener('click', warnUser);
+    $('softDeleteBtn').addEventListener('click', softDeleteAccount);
+    $('deviceBanBtn').addEventListener('click', deviceBan);
+    $('unbanBtn').addEventListener('click', unbanAccount);
+  </script>
+</body>
+</html>
