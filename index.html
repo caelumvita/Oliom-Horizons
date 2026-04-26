@@ -2,12 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Oliom Horizons</title>
+  <title>Oliom Horizons — Games</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
   <header>
     <a href="index.html" class="brand-mini">
       <img src="https://res.cloudinary.com/duqlfltkd/image/upload/f_auto,q_auto/Logo_3_1_3_1_hrynwk" alt="Oliom Horizons logo" class="brand-logo" />
@@ -23,285 +22,66 @@
   </header>
 
   <main>
-
-    <p class="welcome-text" id="welcomeText">Loading account...</p>
-    <div class="user-panel">
-      <img id="userAvatar" alt="Avatar" class="user-avatar" />
-      <div style="flex:1;">
-        <div><strong>Account:</strong></div>
-        <div id="userNameDisplay">Guest</div>
-        <div id="myBioLine" class="tiny" style="margin-top:4px; display:none;"></div>
-      </div>
-      <button id="openEditProfile" class="btn" style="display:none;">Edit profile</button>
-    </div>
-
-    <section id="editProfileBox" class="block" style="display:none;">
-      <h2>Edit profile</h2>
-      <p class="tiny">Choose an avatar color and write a short bio.</p>
-      <div id="avatarGrid" class="avatar-grid"></div>
-      <label class="tiny" for="bioInput">Bio</label>
-      <textarea id="bioInput" maxlength="200" placeholder="Write something about your account..."></textarea>
-      <div class="tiny" id="bioCount">0/200</div>
-      <div class="row-actions" style="margin-top:10px;">
-        <button id="saveProfileBtn" class="btn primary">Save</button>
-        <button id="closeEditProfileBtn" class="btn">Close</button>
-        <span id="saveProfileMsg" class="tiny"></span>
-      </div>
-    </section>
-
-    <div class="logo-card"><img src="https://res.cloudinary.com/duqlfltkd/image/upload/q_auto/f_auto/v1777207275/Meet_The_TF2_title_card_1_phqjuo.png" alt="Oliom Horizons artwork"></div>
-    <p>Welcome to Oliom Horizons. Build worlds in Studio, publish them, and let friends join your games.</p>
-
     <section class="block">
-      <h2>Player search</h2>
-      <div class="user-search-box">
-        <input type="text" id="userSearchInput" placeholder="Type username..." />
-        <button id="userSearchBtn" class="btn">Search</button>
+      <h1 style="margin-top:0;">Games</h1>
+      <p>Published OHS worlds from Oliom Horizons Studio. Press Play to open the world in the OHS engine.</p>
+      <div class="server-actions-bar">
+        <a class="btn primary" href="studio.html">Create in Studio</a>
+        <button id="refreshWorldsBtn" class="btn">Refresh</button>
+        <span id="serverStatusLine" class="status-line">Loading games...</span>
       </div>
-      <div id="userSearchResults"><p class="comment-empty">Sign in, then type a name to search players.</p></div>
-    </section>
-
-    <section class="block">
-      <h2>Friends</h2>
-      <div id="friendsList"><p class="comment-empty">Sign in to see friends.</p></div>
-    </section>
-
-    <section class="block">
-      <h2>BLOG</h2>
-      <p class="comment-info">Developer comments are stored in Firestore.</p>
-      <div id="commentsList"><p class="comment-empty">Loading comments...</p></div>
-      <div class="row-actions" style="margin-top:10px;">
-        <textarea id="commentText" placeholder="Write a short update..."></textarea>
-        <button id="postCommentBtn" class="btn primary">Post comment</button>
+      <div id="worldList" class="server-list">
+        <div class="server-empty">Loading games...</div>
       </div>
-      <p id="commentInfo" class="comment-info">Sign in to post comments.</p>
     </section>
+  </main>
 
-    <div id="profileModal" class="modal">
-      <div class="modal-overlay" id="profileOverlay"></div>
-      <div class="modal-card">
-        <button class="btn modal-close" id="profileCloseBtn">✕</button>
-        <div class="profile-row">
-          <img id="profileAvatar" class="profile-avatar" alt="Avatar" />
-          <div>
-            <div id="profileName" class="profile-name">Player</div>
-            <div id="profileStatus" class="profile-status">Firebase account</div>
+  <footer>© 2026 Oliom Horizons — Firebase · <a href="rules.html" style="color:white;text-decoration:underline;">Rules</a></footer>
+
+  <script type="module">
+    import {
+      db, renderHeaderAuth, escapeHtml, collection, getDocs, query, orderBy
+    } from './firebase-core.js';
+
+    await renderHeaderAuth();
+
+    const worldList = document.getElementById('worldList');
+    const statusLine = document.getElementById('serverStatusLine');
+
+    async function renderWorlds() {
+      const q = query(collection(db, 'worlds'), orderBy('createdAt', 'desc'));
+      const snap = await getDocs(q);
+      const worlds = [];
+      snap.forEach(d => worlds.push({ id:d.id, ...d.data() }));
+
+      statusLine.textContent = `${worlds.length} published game${worlds.length === 1 ? '' : 's'}`;
+
+      if (!worlds.length) {
+        worldList.innerHTML = '<div class="server-empty">No published games yet. Create one in Studio and press Publish.</div>';
+        return;
+      }
+
+      worldList.innerHTML = worlds.map(w => `
+        <div class="server-card">
+          <div class="server-top">
+            <div>
+              <div class="server-name">${escapeHtml(w.title || 'Untitled OHS World')}</div>
+              <div class="server-meta">by ${escapeHtml(w.ownerName || 'Unknown')} · ${escapeHtml(w.engine || 'OHS')}</div>
+            </div>
+            <a class="btn primary" href="studio.html?world=${w.id}&play=1">Play</a>
+          </div>
+          <div class="server-description">${escapeHtml(w.description || 'No description.')}</div>
+          <div class="server-badges">
+            <span class="badge">${w.playerCount || 0} / ${w.maxPlayers || 8} players</span>
+            <span class="badge">${escapeHtml(w.status || 'published')}</span>
+            <span class="badge">OHS world</span>
           </div>
         </div>
-        <div id="profileBio" class="profile-bio" style="margin-top:10px;">No bio yet.</div>
-        <div class="row-actions" style="margin-top:12px;">
-          <button id="addFriendBtn" class="btn primary">Add friend</button>
-          <span id="profileMsg" class="tiny"></span>
-        </div>
-      </div>
-    </div>
+      `).join('');
+    }
 
-  </main>
-  <footer>© 2026 Oliom Horizons — Firebase · <a href="rules.html" style="color:white;text-decoration:underline;">Rules</a></footer>
-  <script type="module">
-
-import {
-  auth, db, $, AVATARS, DEFAULT_AVATAR, escapeHtml, avatarUrl, avatarColorFromUrl,
-  renderHeaderAuth, authReady, ensureProfile, updateProfileData,
-  collection, getDocs, query, orderBy, addDoc, serverTimestamp, where, doc, setDoc
-} from "./firebase-core.js";
-
-let currentUser = null;
-let currentProfile = null;
-let selectedAvatar = DEFAULT_AVATAR;
-let selectedProfile = null;
-
-await renderHeaderAuth();
-
-async function renderUserCard() {
-  currentUser = await authReady();
-  if (!currentUser) {
-    $("welcomeText").textContent = "Welcome Guest";
-    $("userNameDisplay").textContent = "Guest";
-    $("userAvatar").src = DEFAULT_AVATAR;
-    $("myBioLine").style.display = "none";
-    $("openEditProfile").style.display = "none";
-    $("commentInfo").textContent = "Sign in to post comments.";
-    return;
-  }
-  currentProfile = await ensureProfile(currentUser);
-  $("welcomeText").textContent = `Welcome ${currentProfile.username}`;
-  $("userNameDisplay").textContent = currentProfile.username;
-  $("userAvatar").src = avatarUrl(currentProfile.avatar);
-  $("openEditProfile").style.display = "inline-flex";
-  $("commentInfo").textContent = "You are signed in. Comments will be stored in Firestore.";
-  if (currentProfile.bio && currentProfile.bio.trim()) {
-    $("myBioLine").textContent = currentProfile.bio.trim();
-    $("myBioLine").style.display = "block";
-  } else {
-    $("myBioLine").style.display = "none";
-  }
-}
-
-function buildAvatarGrid() {
-  selectedAvatar = currentProfile?.avatar || DEFAULT_AVATAR;
-  $("avatarGrid").innerHTML = "";
-  AVATARS.forEach(avatar => {
-    const cell = document.createElement("div");
-    cell.className = "avatar-option" + (avatar.url === selectedAvatar ? " selected" : "");
-    cell.innerHTML = `<img src="${avatar.url}" alt="${avatar.name} avatar"><div class="tiny">${avatar.name}</div>`;
-    cell.addEventListener("click", () => {
-      selectedAvatar = avatar.url;
-      [...$("avatarGrid").querySelectorAll(".avatar-option")].forEach(el => el.classList.remove("selected"));
-      cell.classList.add("selected");
-    });
-    $("avatarGrid").appendChild(cell);
-  });
-}
-
-function openEditProfile() {
-  if (!currentUser || !currentProfile) return;
-  $("editProfileBox").style.display = "block";
-  $("bioInput").value = currentProfile.bio || "";
-  $("bioCount").textContent = `${$("bioInput").value.length}/200`;
-  $("saveProfileMsg").textContent = "";
-  buildAvatarGrid();
-  $("editProfileBox").scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-async function saveProfile() {
-  if (!currentUser) return;
-  $("saveProfileMsg").textContent = "Saving...";
-  await updateProfileData(currentUser.uid, {
-    avatar: selectedAvatar || DEFAULT_AVATAR,
-    avatarColor: avatarColorFromUrl(selectedAvatar || DEFAULT_AVATAR),
-    bio: $("bioInput").value.trim().slice(0, 200)
-  });
-  currentProfile = await ensureProfile(currentUser);
-  await renderUserCard();
-  $("saveProfileMsg").textContent = "Saved.";
-  setTimeout(() => $("saveProfileMsg").textContent = "", 1000);
-}
-
-async function renderSearchResults() {
-  const queryText = $("userSearchInput").value.trim().toLowerCase();
-  const box = $("userSearchResults");
-  if (!currentUser) { box.innerHTML = '<p class="comment-empty">Sign in to search players.</p>'; return; }
-  if (!queryText) { box.innerHTML = '<p class="comment-empty">Type a name to search players.</p>'; return; }
-  const snap = await getDocs(collection(db, "users"));
-  const users = [];
-  snap.forEach(docSnap => users.push({ id: docSnap.id, ...docSnap.data() }));
-  const filtered = users.filter(u => (u.usernameLower || "").includes(queryText));
-  if (!filtered.length) { box.innerHTML = '<p class="comment-empty">No players found.</p>'; return; }
-  box.innerHTML = "";
-  filtered.forEach(user => {
-    const row = document.createElement("div");
-    row.className = "user-result";
-    row.innerHTML = `
-      <img src="${avatarUrl(user.avatar)}" alt="Avatar" class="user-result-avatar">
-      <div class="user-result-info">
-        <div class="user-result-name">${escapeHtml(user.username || "Player")}</div>
-        <div class="tiny">${escapeHtml(user.bio || "No bio yet.")}</div>
-      </div>
-    `;
-    row.addEventListener("click", () => openProfile(user));
-    box.appendChild(row);
-  });
-}
-
-function openProfile(user) {
-  selectedProfile = user;
-  $("profileAvatar").src = avatarUrl(user.avatar);
-  $("profileName").textContent = user.username || "Player";
-  $("profileStatus").textContent = user.id === currentUser?.uid ? "This is your account" : "Firebase account";
-  $("profileBio").textContent = user.bio || "No bio yet.";
-  $("profileMsg").textContent = "";
-  $("addFriendBtn").style.display = user.id === currentUser?.uid ? "none" : "inline-flex";
-  $("profileModal").classList.add("show");
-}
-
-async function addFriend() {
-  if (!currentUser || !currentProfile || !selectedProfile || selectedProfile.id === currentUser.uid) return;
-  const ids = [currentUser.uid, selectedProfile.id].sort();
-  const friendshipId = `${ids[0]}_${ids[1]}`;
-  await setDoc(doc(db, "friends", friendshipId), {
-    users: ids,
-    userA: ids[0],
-    userB: ids[1],
-    names: {
-      [currentUser.uid]: currentProfile.username,
-      [selectedProfile.id]: selectedProfile.username
-    },
-    avatars: {
-      [currentUser.uid]: currentProfile.avatar || DEFAULT_AVATAR,
-      [selectedProfile.id]: selectedProfile.avatar || DEFAULT_AVATAR
-    },
-    createdAt: serverTimestamp()
-  }, { merge: true });
-  $("profileMsg").textContent = "Friend added.";
-  await renderFriends();
-}
-
-async function renderFriends() {
-  const box = $("friendsList");
-  if (!currentUser) { box.innerHTML = '<p class="comment-empty">Sign in to see friends.</p>'; return; }
-  const q = query(collection(db, "friends"), where("users", "array-contains", currentUser.uid));
-  const snap = await getDocs(q);
-  if (snap.empty) { box.innerHTML = '<p class="comment-empty">No friends yet. Search a player and press Add friend.</p>'; return; }
-  const rows = [];
-  snap.forEach(d => {
-    const f = d.data();
-    const otherId = (f.users || []).find(id => id !== currentUser.uid);
-    rows.push({ id: otherId, name: f.names?.[otherId] || "Friend", avatar: f.avatars?.[otherId] || DEFAULT_AVATAR });
-  });
-  box.innerHTML = rows.map(f => `
-    <div class="friend-card" style="display:flex;align-items:center;gap:10px;">
-      <img src="${avatarUrl(f.avatar)}" class="friend-avatar" alt="Friend avatar">
-      <div><div class="friend-name">${escapeHtml(f.name)}</div><div class="tiny">Friend</div></div>
-    </div>
-  `).join("");
-}
-
-async function renderComments() {
-  const box = $("commentsList");
-  const q = query(collection(db, "comments"), orderBy("createdAt", "desc"));
-  const snap = await getDocs(q);
-  if (snap.empty) { box.innerHTML = '<p class="comment-empty">No comments yet.</p>'; return; }
-  const items = [];
-  snap.forEach(d => items.push({ id: d.id, ...d.data() }));
-  box.innerHTML = items.map(c => `
-    <div class="comment">
-      <div class="comment-author">${escapeHtml(c.authorName || "Player")}</div>
-      <div class="comment-text">${escapeHtml(c.text || "")}</div>
-      <div class="comment-date">${c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : ""}</div>
-    </div>
-  `).join("");
-}
-
-async function postComment() {
-  if (!currentUser || !currentProfile) { alert("Sign in first."); return; }
-  const text = $("commentText").value.trim().slice(0, 500);
-  if (!text) return;
-  await addDoc(collection(db, "comments"), {
-    authorId: currentUser.uid,
-    authorName: currentProfile.username,
-    text,
-    createdAt: serverTimestamp()
-  });
-  $("commentText").value = "";
-  await renderComments();
-}
-
-$("openEditProfile").addEventListener("click", openEditProfile);
-$("closeEditProfileBtn").addEventListener("click", () => $("editProfileBox").style.display = "none");
-$("saveProfileBtn").addEventListener("click", saveProfile);
-$("bioInput").addEventListener("input", () => $("bioCount").textContent = `${$("bioInput").value.length}/200`);
-$("userSearchBtn").addEventListener("click", renderSearchResults);
-$("userSearchInput").addEventListener("keydown", e => { if (e.key === "Enter") renderSearchResults(); });
-$("profileOverlay").addEventListener("click", () => $("profileModal").classList.remove("show"));
-$("profileCloseBtn").addEventListener("click", () => $("profileModal").classList.remove("show"));
-$("addFriendBtn").addEventListener("click", addFriend);
-$("postCommentBtn").addEventListener("click", postComment);
-
-await renderUserCard();
-await renderFriends();
-await renderComments();
-
+    document.getElementById('refreshWorldsBtn').addEventListener('click', renderWorlds);
+    await renderWorlds();
   </script>
 </body>
 </html>
