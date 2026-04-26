@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
   <header>
     <a href="index.html" class="brand-mini">
       <img src="https://res.cloudinary.com/duqlfltkd/image/upload/f_auto,q_auto/Logo_3_1_3_1_hrynwk" alt="Oliom Horizons logo" class="brand-logo" />
@@ -23,149 +22,67 @@
   </header>
 
   <main>
-
     <section class="block">
       <h1 style="margin-top:0;">Games</h1>
-      <p id="pageInfo">Published Oliom Horizons games. Open a game to play it in this page.</p>
-      <div id="browserControls" class="server-actions-bar">
+      <p>Published OHS worlds from Oliom Horizons Studio. Press Play to open the world in the OHS engine.</p>
+      <div class="server-actions-bar">
+        <a class="btn primary" href="studio.html">Create in Studio</a>
         <button id="refreshWorldsBtn" class="btn">Refresh</button>
         <span id="serverStatusLine" class="status-line">Loading games...</span>
       </div>
-      <div id="worldList" class="server-list"><div class="server-empty">Loading games...</div></div>
-    </section>
-
-    <section id="gameSection" class="block" style="display:none;">
-      <h2 id="gameTitle">Game</h2>
-      <p id="gameDescription" class="comment-info"></p>
-      <div class="row-actions" style="margin-bottom:10px;">
-        <a href="server.html" class="btn">Back to Games</a>
-        <span class="tiny">WASD / Arrow keys to move. This is the first playable prototype.</span>
+      <div id="worldList" class="server-list">
+        <div class="server-empty">Loading games...</div>
       </div>
-      <div id="gameView" class="game-view"></div>
     </section>
-
   </main>
+
   <footer>© 2026 Oliom Horizons — Firebase · <a href="rules.html" style="color:white;text-decoration:underline;">Rules</a></footer>
+
   <script type="module">
+    import {
+      db, renderHeaderAuth, escapeHtml, checkDeviceBanOrBlock, collection, getDocs, query, orderBy
+    } from './firebase-core.js';
 
-import {
-  $, db, renderHeaderAuth, authReady, ensureProfile, escapeHtml,
-  collection, getDocs, query, orderBy, doc, getDoc, avatarHex
-} from "./firebase-core.js";
+    await renderHeaderAuth();
+    await checkDeviceBanOrBlock();
 
-await renderHeaderAuth();
-const user = await authReady();
-const profile = user ? await ensureProfile(user) : null;
+    const worldList = document.getElementById('worldList');
+    const statusLine = document.getElementById('serverStatusLine');
 
-const params = new URLSearchParams(location.search);
-const worldId = params.get("world");
+    async function renderWorlds() {
+      const q = query(collection(db, 'worlds'), orderBy('createdAt', 'desc'));
+      const snap = await getDocs(q);
+      const worlds = [];
+      snap.forEach(d => worlds.push({ id:d.id, ...d.data() }));
 
-async function renderWorlds() {
-  const q = query(collection(db, "worlds"), orderBy("createdAt", "desc"));
-  const snap = await getDocs(q);
-  const worlds = [];
-  snap.forEach(d => worlds.push({ id: d.id, ...d.data() }));
+      statusLine.textContent = `${worlds.length} published game${worlds.length === 1 ? '' : 's'}`;
 
-  $("serverStatusLine").textContent = `${worlds.length} published game${worlds.length === 1 ? "" : "s"}`;
-  const box = $("worldList");
-  if (!worlds.length) {
-    box.innerHTML = '<div class="server-empty">No published games yet. Create one in Studio.</div>';
-    return;
-  }
-
-  box.innerHTML = worlds.map(w => `
-    <div class="server-card">
-      <div class="server-top">
-        <div>
-          <div class="server-name">${escapeHtml(w.title || "Untitled World")}</div>
-          <div class="server-meta">by ${escapeHtml(w.ownerName || "Unknown")} · ${escapeHtml(w.status || "published")}</div>
-        </div>
-        <a class="btn primary" href="server.html?world=${w.id}">Play</a>
-      </div>
-      <div class="server-description">${escapeHtml(w.description || "No description.")}</div>
-      <div class="server-badges">
-        <span class="badge">${w.playerCount || 0} / ${w.maxPlayers || 8} players</span>
-        <span class="badge">Published world</span>
-      </div>
-    </div>
-  `).join("");
-}
-
-async function playWorld(id) {
-  const snap = await getDoc(doc(db, "worlds", id));
-  if (!snap.exists()) {
-    $("worldList").innerHTML = '<div class="server-empty">Game not found.</div>';
-    return;
-  }
-  const world = { id: snap.id, ...snap.data() };
-  $("browserControls").style.display = "none";
-  $("worldList").style.display = "none";
-  $("pageInfo").textContent = "You are playing a published game.";
-  $("gameSection").style.display = "block";
-  $("gameTitle").textContent = world.title || "Untitled World";
-  $("gameDescription").textContent = world.description || "";
-
-  const view = $("gameView");
-  const objects = world.worldData?.objects || [];
-  view.innerHTML = "";
-  objects.forEach(obj => {
-    const el = document.createElement("div");
-    el.className = "world-object";
-    el.style.left = obj.x + "px";
-    el.style.top = obj.y + "px";
-    el.style.width = obj.w + "px";
-    el.style.height = obj.h + "px";
-    el.style.background = obj.color || "#7ed957";
-    el.textContent = obj.type === "goal" ? "Goal" : "";
-    view.appendChild(el);
-  });
-
-  const player = document.createElement("div");
-  player.className = "player-dot";
-  player.style.background = avatarHex(profile?.avatarColor || "green");
-  view.appendChild(player);
-
-  let px = 80, py = 300;
-  const keys = new Set();
-
-  function updatePlayer() {
-    player.style.left = px + "px";
-    player.style.top = py + "px";
-  }
-  updatePlayer();
-
-  window.addEventListener("keydown", e => keys.add(e.key.toLowerCase()));
-  window.addEventListener("keyup", e => keys.delete(e.key.toLowerCase()));
-
-  function step() {
-    const speed = 3;
-    if (keys.has("a") || keys.has("arrowleft")) px -= speed;
-    if (keys.has("d") || keys.has("arrowright")) px += speed;
-    if (keys.has("w") || keys.has("arrowup")) py -= speed;
-    if (keys.has("s") || keys.has("arrowdown")) py += speed;
-    const rect = view.getBoundingClientRect();
-    px = Math.max(17, Math.min(rect.width - 17, px));
-    py = Math.max(17, Math.min(rect.height - 17, py));
-
-    for (const obj of objects) {
-      if (obj.type === "goal" && px > obj.x && px < obj.x + obj.w && py > obj.y && py < obj.y + obj.h) {
-        $("gameDescription").textContent = "You reached the goal! This is the first game prototype.";
+      if (!worlds.length) {
+        worldList.innerHTML = '<div class="server-empty">No published games yet. Create one in Studio and press Publish.</div>';
+        return;
       }
+
+      worldList.innerHTML = worlds.map(w => `
+        <div class="server-card">
+          <div class="server-top">
+            <div>
+              <div class="server-name">${escapeHtml(w.title || 'Untitled OHS World')}</div>
+              <div class="server-meta">by ${escapeHtml(w.ownerName || 'Unknown')} · ${escapeHtml(w.engine || 'OHS')}</div>
+            </div>
+            <a class="btn primary" href="studio.html?world=${w.id}&play=1">Play</a>
+          </div>
+          <div class="server-description">${escapeHtml(w.description || 'No description.')}</div>
+          <div class="server-badges">
+            <span class="badge">${w.playerCount || 0} / ${w.maxPlayers || 8} players</span>
+            <span class="badge">${escapeHtml(w.status || 'published')}</span>
+            <span class="badge">OHS world</span>
+          </div>
+        </div>
+      `).join('');
     }
-    updatePlayer();
-    requestAnimationFrame(step);
-  }
-  step();
-}
 
-$("refreshWorldsBtn").addEventListener("click", renderWorlds);
-
-if (worldId) {
-  await playWorld(worldId);
-} else {
-  await renderWorlds();
-}
-
+    document.getElementById('refreshWorldsBtn').addEventListener('click', renderWorlds);
+    await renderWorlds();
   </script>
 </body>
 </html>
