@@ -16,7 +16,7 @@
     <nav class="main-nav">
       <a href="index.html" class="btn">Home</a>
       <a href="studio.html" class="btn">Studio</a>
-      <a href="server.html" class="btn">Servers</a>
+      <a href="server.html" class="btn">Games</a>
       <a href="rules.html" class="btn">Rules</a>
     </nav>
     <div class="auth-buttons" data-auth></div>
@@ -44,15 +44,11 @@
 
 import { $, renderHeaderAuth, signInWithEmailAndPassword, auth } from "./firebase-core.js";
 await renderHeaderAuth();
-
 async function doLogin() {
   const email = $("email").value.trim();
   const password = $("password").value;
   $("msg").textContent = "";
-  if (!email || !password) {
-    $("msg").textContent = "Type email and password.";
-    return;
-  }
+  if (!email || !password) { $("msg").textContent = "Type email and password."; return; }
   try {
     await signInWithEmailAndPassword(auth, email, password);
     location.href = "index.html";
