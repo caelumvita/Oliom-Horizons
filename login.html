@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,23 +8,21 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
   <header>
-    <a href="index.html" class="brand-mini">
+    <a href="server.html" class="brand-mini">
       <img src="https://res.cloudinary.com/duqlfltkd/image/upload/f_auto,q_auto/Logo_3_1_3_1_hrynwk" alt="Oliom Horizons logo" class="brand-logo" />
       <div class="brand-title">Oliom Horizons<span>Firebase</span></div>
     </a>
     <nav class="main-nav">
-      <a href="index.html" class="btn">Home</a>
+      <a href="server.html" class="btn primary">Games</a>
       <a href="studio.html" class="btn">Studio</a>
-      <a href="server.html" class="btn">Games</a>
+      <a href="profile.html" class="btn">Profile</a>
+      <a href="moderation.html" class="btn">Moderation</a>
       <a href="rules.html" class="btn">Rules</a>
     </nav>
     <div class="auth-buttons" data-auth></div>
   </header>
-
   <main>
-
     <section class="block" style="max-width:560px;">
       <h1 style="margin-top:0;">Log in</h1>
       <p>Use your Oliom Horizons Firebase account.</p>
@@ -37,29 +36,22 @@
         <span id="msg" class="tiny"></span>
       </div>
     </section>
-
   </main>
-  <footer>© 2026 Oliom Horizons — Firebase · <a href="rules.html" style="color:white;text-decoration:underline;">Rules</a></footer>
+  <footer>© 2026 Oliom Horizons — Firebase</footer>
   <script type="module">
-
-import { $, renderHeaderAuth, signInWithEmailAndPassword, auth } from "./firebase-core.js";
+import { $, renderHeaderAuth, signInWithEmailAndPassword, auth, checkDeviceBanOrBlock } from "./firebase-core.js";
 await renderHeaderAuth();
+await checkDeviceBanOrBlock();
 async function doLogin() {
   const email = $("email").value.trim();
   const password = $("password").value;
   $("msg").textContent = "";
   if (!email || !password) { $("msg").textContent = "Type email and password."; return; }
-  try {
-    await signInWithEmailAndPassword(auth, email, password);
-    location.href = "index.html";
-  } catch (err) {
-    console.error(err);
-    $("msg").textContent = "Login failed. Check email/password.";
-  }
+  try { await signInWithEmailAndPassword(auth, email, password); location.href = "server.html"; }
+  catch (err) { console.error(err); $("msg").textContent = "Login failed: " + err.message; }
 }
 $("loginSubmit").addEventListener("click", doLogin);
 $("password").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
-
   </script>
 </body>
 </html>
