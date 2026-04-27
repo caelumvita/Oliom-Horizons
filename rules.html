@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,42 +8,37 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
   <header>
-    <a href="index.html" class="brand-mini">
+    <a href="server.html" class="brand-mini">
       <img src="https://res.cloudinary.com/duqlfltkd/image/upload/f_auto,q_auto/Logo_3_1_3_1_hrynwk" alt="Oliom Horizons logo" class="brand-logo" />
       <div class="brand-title">Oliom Horizons<span>Firebase</span></div>
     </a>
     <nav class="main-nav">
-      <a href="index.html" class="btn">Home</a>
+      <a href="server.html" class="btn primary">Games</a>
       <a href="studio.html" class="btn">Studio</a>
-      <a href="server.html" class="btn">Games</a>
+      <a href="profile.html" class="btn">Profile</a>
+      <a href="moderation.html" class="btn">Moderation</a>
       <a href="rules.html" class="btn">Rules</a>
     </nav>
     <div class="auth-buttons" data-auth></div>
   </header>
-
   <main>
-
     <section class="block">
       <h1 style="margin-top:0;">Oliom Horizons Rules</h1>
       <p>These are the general community rules for worlds, profiles, comments, and future online servers.</p>
       <div class="grid rules-grid">
-        <div class="rule-card"><strong>1. Create original work</strong><span>Do not copy, re-upload, steal, or slightly rename someone else’s project, world, logo, map, scripts, or assets. Inspiration is okay; direct copying is not.</span></div>
-        <div class="rule-card"><strong>2. Respect other creators</strong><span>No harassment, threats, impersonation, humiliation, or drama targeting other users. Criticism should be calm and useful.</span></div>
-        <div class="rule-card"><strong>3. No politics or culture-war content</strong><span>Oliom Horizons is for building and playing. Do not use worlds, profiles, comments, or servers to promote political arguments, campaigns, or controversial real-world disputes.</span></div>
-        <div class="rule-card"><strong>4. No religious debates or targeting</strong><span>Do not attack, mock, pressure, or debate people based on religion. Keep the platform neutral and friendly for everyone.</span></div>
-        <div class="rule-card"><strong>5. No orientation or identity arguments</strong><span>Do not target, insult, debate, or provoke people because of orientation, identity, or personal traits. Everyone should be able to build safely.</span></div>
-        <div class="rule-card"><strong>6. No dating or romantic roleplay</strong><span>Oliom Horizons is not a dating platform. Do not use profiles, servers, comments, or games for dating, romantic roleplay, flirting, or relationship-seeking.</span></div>
-        <div class="rule-card"><strong>7. Keep content appropriate</strong><span>No sexual content, extreme violence, hate symbols, scams, malicious links, or anything designed to shock or harm users.</span></div>
-        <div class="rule-card"><strong>8. Safe scripts only</strong><span>OHS scripts and future uploaded worlds should be understandable and safe. Do not create scripts intended to crash, exploit, steal data, or break other worlds.</span></div>
-        <div class="rule-card"><strong>9. No spam</strong><span>Do not flood comments, servers, names, or profiles with repeated text, fake servers, advertisements, or misleading content.</span></div>
-        <div class="rule-card"><strong>10. Moderation can remove content</strong><span>When online features are added, unsafe or rule-breaking worlds, comments, profiles, or servers may be hidden or removed.</span></div>
+        <div class="rule-card"><strong>1. Create original work</strong><span>Do not copy, re-upload, steal, or slightly rename someone else’s project, world, logo, map, scripts, or assets.</span></div>
+        <div class="rule-card"><strong>2. Respect other creators</strong><span>No harassment, threats, impersonation, humiliation, or drama targeting other users.</span></div>
+        <div class="rule-card"><strong>3. No politics or culture-war content</strong><span>Oliom Horizons is for building and playing, not political arguments.</span></div>
+        <div class="rule-card"><strong>4. No religious debates or targeting</strong><span>Do not attack, mock, pressure, or debate people based on religion.</span></div>
+        <div class="rule-card"><strong>5. No orientation or identity arguments</strong><span>Do not target, insult, debate, or provoke people because of orientation, identity, or personal traits.</span></div>
+        <div class="rule-card"><strong>6. No dating</strong><span>Oliom Horizons is not a dating platform.</span></div>
+        <div class="rule-card"><strong>7. Keep content appropriate</strong><span>No sexual content, extreme violence, hate symbols, scams, malicious links, or shock content.</span></div>
+        <div class="rule-card"><strong>8. Safe scripts only</strong><span>Do not create scripts intended to crash, exploit, steal data, or break other worlds.</span></div>
       </div>
     </section>
-
   </main>
-  <footer>© 2026 Oliom Horizons — Firebase · <a href="rules.html" style="color:white;text-decoration:underline;">Rules</a></footer>
+  <footer>© 2026 Oliom Horizons — Firebase</footer>
   <script type="module">
 import { renderHeaderAuth } from "./firebase-core.js"; await renderHeaderAuth();
   </script>
