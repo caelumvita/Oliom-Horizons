@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,18 +11,17 @@
   <header>
     <a href="server.html" class="brand-mini">
       <img src="https://res.cloudinary.com/duqlfltkd/image/upload/f_auto,q_auto/Logo_3_1_3_1_hrynwk" alt="Oliom Horizons logo" class="brand-logo" />
-      <div class="brand-title">Oliom Horizons<span>Moderation</span></div>
+      <div class="brand-title">Oliom Horizons<span>Firebase</span></div>
     </a>
     <nav class="main-nav">
-      <a href="server.html" class="btn">Games</a>
+      <a href="server.html" class="btn primary">Games</a>
       <a href="studio.html" class="btn">Studio</a>
-      <a href="index.html" class="btn">Profile</a>
-      <a href="moderation.html" class="btn primary">Moderation</a>
+      <a href="profile.html" class="btn">Profile</a>
+      <a href="moderation.html" class="btn">Moderation</a>
       <a href="rules.html" class="btn">Rules</a>
     </nav>
     <div class="auth-buttons" data-auth></div>
   </header>
-
   <main>
     <section class="block">
       <h1 style="margin-top:0;">Moderation Panel</h1>
@@ -61,210 +61,103 @@
       <div id="warningsList"><p class="comment-empty">No warnings loaded.</p></div>
     </section>
   </main>
-
-  <footer>© 2026 Oliom Horizons — Moderation</footer>
-
+  <footer>© 2026 Oliom Horizons — Firebase</footer>
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-    import {
-      getFirestore, doc, getDoc, setDoc, updateDoc,
-      collection, getDocs, addDoc, serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import {
+  db, authReady, ensureProfile, renderHeaderAuth, $, escapeHtml, ADMIN_USERNAME,
+  collection, getDocs, doc, setDoc, addDoc, updateDoc, serverTimestamp
+} from "./firebase-core.js";
+await renderHeaderAuth();
 
-    const firebaseConfig = {
-  apiKey: "AIzaSyBbNRWbaSQfz8_5Wb0wqr7fpI2tuiybSNs",
-  authDomain: "oliom-horizons.firebaseapp.com",
-  projectId: "oliom-horizons",
-  storageBucket: "oliom-horizons.firebasestorage.app",
-  messagingSenderId: "123365117413",
-  appId: "1:123365117413:web:9c3893c2095f02305df30c",
-  measurementId: "G-RMMT35LFH4"
-};
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    const ADMIN_USERNAME = "CaelumVita";
+const user = await authReady();
+const profile = user ? await ensureProfile(user) : null;
+let selectedUser = null;
 
-    const $ = id => document.getElementById(id);
-    const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-    const normalize = s => String(s || "").trim().toLowerCase().replace(/\s+/g,"_");
+if (!user || profile?.username !== ADMIN_USERNAME) {
+  $("adminStatus").textContent = user ? `Access denied. Current username: ${profile?.username || "unknown"}` : "Please log in as CaelumVita.";
+} else {
+  $("adminStatus").textContent = "Access granted.";
+  $("modPanel").style.display = "block";
+  await loadUsers();
+}
 
-    let currentUser = null;
-    let currentProfile = null;
-    let selectedUser = null;
-
-    function authReady(){
-      return new Promise(resolve=>{
-        const unsub=onAuthStateChanged(auth,user=>{unsub();resolve(user);});
-      });
-    }
-
-    async function ensureProfile(user){
-      const ref=doc(db,"users",user.uid);
-      const snap=await getDoc(ref);
-      if(snap.exists())return {id:user.uid,...snap.data()};
-      const username=(user.displayName||user.email?.split("@")[0]||"Player").trim().slice(0,24);
-      const p={uid:user.uid,username,usernameLower:normalize(username),email:user.email||"",avatar:"",avatarColor:"green",bio:"",status:"active",createdAt:serverTimestamp(),updatedAt:serverTimestamp()};
-      await setDoc(ref,p,{merge:true});
-      return {id:user.uid,...p};
-    }
-
-    function renderAuth(){
-      const box=document.querySelector("[data-auth]");
-      box.innerHTML=currentUser
-        ? `<span class="tiny">Signed in as ${esc(currentProfile?.username || currentUser.email)}</span><button class="btn danger" id="logoutBtn">Log out</button>`
-        : `<a class="btn" href="login.html">Log in</a><a class="btn primary" href="signin.html">Sign up</a>`;
-      document.getElementById("logoutBtn")?.addEventListener("click",async()=>{await signOut(auth);location.href="server.html";});
-    }
-
-    async function init(){
-      currentUser=await authReady();
-      if(!currentUser){
-        $("adminStatus").textContent="Please log in as CaelumVita.";
-        renderAuth();
-        return;
-      }
-      currentProfile=await ensureProfile(currentUser);
-      renderAuth();
-
-      if(currentProfile.username!==ADMIN_USERNAME){
-        $("adminStatus").textContent="Access denied. Current username: "+(currentProfile.username||"unknown");
-        return;
-      }
-
-      $("adminStatus").textContent="Access granted.";
-      $("modPanel").style.display="block";
-      await loadUsers();
-    }
-
-    async function loadUsers(){
-      $("usersList").innerHTML='<p class="comment-empty">Loading users...</p>';
-      try{
-        const search=$("searchInput").value.trim().toLowerCase();
-        const snap=await getDocs(collection(db,"users"));
-        const rows=[];
-        snap.forEach(d=>rows.push({id:d.id,...d.data()}));
-        rows.sort((a,b)=>String(a.usernameLower||"").localeCompare(String(b.usernameLower||"")));
-        const filtered=search?rows.filter(u=>(u.usernameLower||"").includes(search)):rows;
-        if(!filtered.length){
-          $("usersList").innerHTML='<p class="comment-empty">No users found.</p>';
-          return;
-        }
-        $("usersList").innerHTML=filtered.map(u=>`
-          <div class="user-result" data-uid="${u.id}">
-            <img src="${u.avatar || ""}" class="user-result-avatar" alt="Avatar">
-            <div class="user-result-info">
-              <div class="user-result-name">${esc(u.username || "Player")}</div>
-              <div class="tiny">UID: ${esc(u.id)} · status: ${esc(u.status || "active")}</div>
-              <div class="tiny">Device: ${esc(u.lastDeviceId || "unknown")}</div>
-            </div>
-          </div>
-        `).join("");
-        [...$("usersList").querySelectorAll(".user-result")].forEach(el=>{
-          el.addEventListener("click",()=>{
-            selectedUser=filtered.find(u=>u.id===el.dataset.uid);
-            renderSelected();
-          });
-        });
-      }catch(err){
-        console.error(err);
-        $("usersList").innerHTML=`<p class="comment-empty">Could not load users: ${esc(err.message)}<br>Update Firestore Rules.</p>`;
-      }
-    }
-
-    function renderSelected(){
-      if(!selectedUser)return;
-      $("selectedPanel").style.display="block";
-      $("warningsPanel").style.display="block";
-      $("selectedInfo").innerHTML=`
-        <strong>${esc(selectedUser.username || "Player")}</strong><br>
-        UID: ${esc(selectedUser.id)}<br>
-        Email: ${esc(selectedUser.email || "")}<br>
-        Status: ${esc(selectedUser.status || "active")}<br>
-        Device: ${esc(selectedUser.lastDeviceId || "unknown")}
-      `;
-      $("actionMsg").textContent="";
-      loadWarnings();
-    }
-
-    function reason(){
-      const r=$("reasonInput").value.trim().slice(0,300);
-      if(!r)$("actionMsg").textContent="Write a reason first.";
-      return r;
-    }
-
-    async function log(type, reason){
-      await addDoc(collection(db,"modLogs"),{type,reason,targetId:selectedUser.id,targetName:selectedUser.username||"Player",moderatorId:currentUser.uid,moderatorName:currentProfile.username,createdAt:serverTimestamp()});
-    }
-
-    async function warnUser(){
-      if(!selectedUser)return;
-      const r=reason(); if(!r)return;
-      await addDoc(collection(db,"warnings"),{targetId:selectedUser.id,targetName:selectedUser.username||"Player",moderatorId:currentUser.uid,moderatorName:currentProfile.username,reason:r,active:true,createdAt:serverTimestamp()});
-      await log("warning",r);
-      $("actionMsg").textContent="Warning added.";
-      await loadWarnings();
-    }
-
-    async function softDelete(){
-      if(!selectedUser)return;
-      const r=reason(); if(!r)return;
-      if(!confirm("Remove this account from using the site?"))return;
-      await updateDoc(doc(db,"users",selectedUser.id),{status:"account_deleted",banType:"account_delete",banReason:r,banMessage:"Your Oliom Horizons account was removed by moderation. You may create a new account if your device is not banned.",bannedBy:currentUser.uid,bannedAt:serverTimestamp()});
-      await log("account_delete",r);
-      $("actionMsg").textContent="Account removed inside the site.";
-      await loadUsers();
-    }
-
-    async function deviceBan(){
-      if(!selectedUser)return;
-      const r=reason(); if(!r)return;
-      if(!selectedUser.lastDeviceId){ $("actionMsg").textContent="This user has no saved device id yet."; return; }
-      if(!confirm("Ban this browser/device id?"))return;
-      await setDoc(doc(db,"deviceBans",selectedUser.lastDeviceId),{deviceId:selectedUser.lastDeviceId,targetId:selectedUser.id,targetName:selectedUser.username||"Player",reason:r,active:true,bannedBy:currentUser.uid,bannedByName:currentProfile.username,createdAt:serverTimestamp()},{merge:true});
-      await updateDoc(doc(db,"users",selectedUser.id),{status:"banned",banType:"device",banReason:r,banMessage:"This account and device are banned from Oliom Horizons.",bannedBy:currentUser.uid,bannedAt:serverTimestamp()});
-      await log("device_ban",r);
-      $("actionMsg").textContent="Device ban added.";
-      await loadUsers();
-    }
-
-    async function unban(){
-      if(!selectedUser)return;
-      await updateDoc(doc(db,"users",selectedUser.id),{status:"active",banType:"",banReason:"",banMessage:"",bannedBy:"",bannedAt:null});
-      await log("unban_account","Account unbanned");
-      $("actionMsg").textContent="Account unbanned. Device ban documents must be deleted manually if needed.";
-      await loadUsers();
-    }
-
-    async function loadWarnings(){
-      try{
-        const snap=await getDocs(collection(db,"warnings"));
-        const rows=[];
-        snap.forEach(d=>{const w=d.data(); if(w.targetId===selectedUser.id)rows.push({id:d.id,...w});});
-        rows.sort((a,b)=> (b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
-        if(!rows.length){ $("warningsList").innerHTML='<p class="comment-empty">No warnings.</p>'; return; }
-        $("warningsList").innerHTML=rows.map(w=>`
-          <div class="comment">
-            <div class="comment-author">Warning by ${esc(w.moderatorName || "Moderator")}</div>
-            <div class="comment-text">${esc(w.reason || "")}</div>
-            <div class="comment-date">${w.createdAt?.toDate ? w.createdAt.toDate().toLocaleString() : ""}</div>
-          </div>
-        `).join("");
-      }catch(err){
-        $("warningsList").innerHTML=`<p class="comment-empty">Could not load warnings: ${esc(err.message)}</p>`;
-      }
-    }
-
-    $("searchBtn").addEventListener("click",loadUsers);
-    $("refreshBtn").addEventListener("click",loadUsers);
-    $("searchInput").addEventListener("keydown",e=>{if(e.key==="Enter")loadUsers();});
-    $("warnBtn").addEventListener("click",warnUser);
-    $("softDeleteBtn").addEventListener("click",softDelete);
-    $("deviceBanBtn").addEventListener("click",deviceBan);
-    $("unbanBtn").addEventListener("click",unban);
-
-    await init();
+async function loadUsers(){
+  $("usersList").innerHTML = '<p class="comment-empty">Loading users...</p>';
+  try{
+    const search = $("searchInput").value.trim().toLowerCase();
+    const snap = await getDocs(collection(db,"users"));
+    const rows = [];
+    snap.forEach(d=>rows.push({id:d.id,...d.data()}));
+    rows.sort((a,b)=>String(a.usernameLower||"").localeCompare(String(b.usernameLower||"")));
+    const filtered = search ? rows.filter(u=>(u.usernameLower||"").includes(search)) : rows;
+    if(!filtered.length){ $("usersList").innerHTML='<p class="comment-empty">No users found.</p>'; return; }
+    $("usersList").innerHTML = filtered.map(u=>`
+      <div class="user-result" data-uid="${u.id}">
+        <img src="${u.avatar || ""}" class="user-result-avatar" alt="Avatar">
+        <div class="user-result-info">
+          <div class="user-result-name">${escapeHtml(u.username || "Player")}</div>
+          <div class="tiny">UID: ${escapeHtml(u.id)} · status: ${escapeHtml(u.status || "active")}</div>
+          <div class="tiny">Device: ${escapeHtml(u.lastDeviceId || "unknown")}</div>
+        </div>
+      </div>
+    `).join("");
+    [...$("usersList").querySelectorAll(".user-result")].forEach(el=>{
+      el.addEventListener("click",()=>{ selectedUser=filtered.find(u=>u.id===el.dataset.uid); renderSelected(); });
+    });
+  }catch(err){
+    console.error(err);
+    $("usersList").innerHTML = `<p class="comment-empty">Could not load users: ${escapeHtml(err.message)}<br>Update Firestore Rules.</p>`;
+  }
+}
+function renderSelected(){
+  if(!selectedUser)return;
+  $("selectedPanel").style.display="block";
+  $("warningsPanel").style.display="block";
+  $("selectedInfo").innerHTML = `<strong>${escapeHtml(selectedUser.username || "Player")}</strong><br>UID: ${escapeHtml(selectedUser.id)}<br>Email: ${escapeHtml(selectedUser.email || "")}<br>Status: ${escapeHtml(selectedUser.status || "active")}<br>Device: ${escapeHtml(selectedUser.lastDeviceId || "unknown")}`;
+  $("actionMsg").textContent="";
+  loadWarnings();
+}
+function reason(){ const r=$("reasonInput").value.trim().slice(0,300); if(!r)$("actionMsg").textContent="Write a reason first."; return r; }
+async function log(type, reason){ await addDoc(collection(db,"modLogs"),{type,reason,targetId:selectedUser.id,targetName:selectedUser.username||"Player",moderatorId:user.uid,moderatorName:profile.username,createdAt:serverTimestamp()}); }
+async function warnUser(){
+  if(!selectedUser)return; const r=reason(); if(!r)return;
+  await addDoc(collection(db,"warnings"),{targetId:selectedUser.id,targetName:selectedUser.username||"Player",moderatorId:user.uid,moderatorName:profile.username,reason:r,active:true,createdAt:serverTimestamp()});
+  await log("warning",r); $("actionMsg").textContent="Warning added."; await loadWarnings();
+}
+async function softDelete(){
+  if(!selectedUser)return; const r=reason(); if(!r)return; if(!confirm("Remove this account from using the site?"))return;
+  await updateDoc(doc(db,"users",selectedUser.id),{status:"account_deleted",banType:"account_delete",banReason:r,banMessage:"Your Oliom Horizons account was removed by moderation. You may create a new account if your device is not banned.",bannedBy:user.uid,bannedAt:serverTimestamp()});
+  await log("account_delete",r); $("actionMsg").textContent="Account removed inside the site."; await loadUsers();
+}
+async function deviceBan(){
+  if(!selectedUser)return; const r=reason(); if(!r)return;
+  if(!selectedUser.lastDeviceId){ $("actionMsg").textContent="This user has no saved device id yet."; return; }
+  if(!confirm("Ban this browser/device id?"))return;
+  await setDoc(doc(db,"deviceBans",selectedUser.lastDeviceId),{deviceId:selectedUser.lastDeviceId,targetId:selectedUser.id,targetName:selectedUser.username||"Player",reason:r,active:true,bannedBy:user.uid,bannedByName:profile.username,createdAt:serverTimestamp()},{merge:true});
+  await updateDoc(doc(db,"users",selectedUser.id),{status:"banned",banType:"device",banReason:r,banMessage:"This account and device are banned from Oliom Horizons.",bannedBy:user.uid,bannedAt:serverTimestamp()});
+  await log("device_ban",r); $("actionMsg").textContent="Device ban added."; await loadUsers();
+}
+async function unban(){
+  if(!selectedUser)return;
+  await updateDoc(doc(db,"users",selectedUser.id),{status:"active",banType:"",banReason:"",banMessage:"",bannedBy:"",bannedAt:null});
+  await log("unban_account","Account unbanned"); $("actionMsg").textContent="Account unbanned. Device ban documents must be deleted manually if needed."; await loadUsers();
+}
+async function loadWarnings(){
+  try{
+    const snap=await getDocs(collection(db,"warnings"));
+    const rows=[]; snap.forEach(d=>{const w=d.data(); if(w.targetId===selectedUser.id)rows.push({id:d.id,...w});});
+    rows.sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
+    if(!rows.length){ $("warningsList").innerHTML='<p class="comment-empty">No warnings.</p>'; return; }
+    $("warningsList").innerHTML = rows.map(w=>`<div class="comment"><div class="comment-author">Warning by ${escapeHtml(w.moderatorName || "Moderator")}</div><div class="comment-text">${escapeHtml(w.reason || "")}</div><div class="comment-date">${w.createdAt?.toDate ? w.createdAt.toDate().toLocaleString() : ""}</div></div>`).join("");
+  }catch(err){ $("warningsList").innerHTML = `<p class="comment-empty">Could not load warnings: ${escapeHtml(err.message)}</p>`; }
+}
+$("searchBtn").addEventListener("click",loadUsers);
+$("refreshBtn").addEventListener("click",loadUsers);
+$("searchInput").addEventListener("keydown",e=>{if(e.key==="Enter")loadUsers();});
+$("warnBtn").addEventListener("click",warnUser);
+$("softDeleteBtn").addEventListener("click",softDelete);
+$("deviceBanBtn").addEventListener("click",deviceBan);
+$("unbanBtn").addEventListener("click",unban);
   </script>
 </body>
 </html>
