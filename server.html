@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,18 +11,17 @@
   <header>
     <a href="server.html" class="brand-mini">
       <img src="https://res.cloudinary.com/duqlfltkd/image/upload/f_auto,q_auto/Logo_3_1_3_1_hrynwk" alt="Oliom Horizons logo" class="brand-logo" />
-      <div class="brand-title">Oliom Horizons<span>Games</span></div>
+      <div class="brand-title">Oliom Horizons<span>Firebase</span></div>
     </a>
     <nav class="main-nav">
       <a href="server.html" class="btn primary">Games</a>
       <a href="studio.html" class="btn">Studio</a>
-      <a href="index.html" class="btn">Profile</a>
+      <a href="profile.html" class="btn">Profile</a>
       <a href="moderation.html" class="btn">Moderation</a>
       <a href="rules.html" class="btn">Rules</a>
     </nav>
     <div class="auth-buttons" data-auth></div>
   </header>
-
   <main>
     <section class="block">
       <h1 style="margin-top:0;">Games</h1>
@@ -33,90 +33,66 @@
       </div>
       <div id="worldList" class="server-list"><div class="server-empty">Loading games...</div></div>
     </section>
+
+    <section class="block">
+      <h2>Welcome to Oliom Horizons</h2>
+      <p>Games are the main page. Use Studio to create OHS worlds, Profile to manage friends/avatar, and Moderation for CaelumVita tools.</p>
+    </section>
   </main>
-
   <footer>© 2026 Oliom Horizons — Firebase</footer>
-
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { db, renderHeaderAuth, escapeHtml, collection, getDocs } from "./firebase-core.js";
+await renderHeaderAuth();
 
-    const firebaseConfig = {
-  apiKey: "AIzaSyBbNRWbaSQfz8_5Wb0wqr7fpI2tuiybSNs",
-  authDomain: "oliom-horizons.firebaseapp.com",
-  projectId: "oliom-horizons",
-  storageBucket: "oliom-horizons.firebasestorage.app",
-  messagingSenderId: "123365117413",
-  appId: "1:123365117413:web:9c3893c2095f02305df30c",
-  measurementId: "G-RMMT35LFH4"
-};
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+const worldList = document.getElementById("worldList");
+const statusLine = document.getElementById("serverStatusLine");
 
-    const worldList = document.getElementById("worldList");
-    const statusLine = document.getElementById("serverStatusLine");
-    const authBox = document.querySelector("[data-auth]");
+function sortWorlds(worlds){
+  return worlds.sort((a,b)=>{
+    const at = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+    const bt = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+    return bt-at;
+  });
+}
 
-    const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-
-    onAuthStateChanged(auth, user => {
-      authBox.innerHTML = user
-        ? `<a class="btn primary" href="studio.html">Studio</a><span class="tiny">Signed in</span><button class="btn danger" id="logoutBtn">Log out</button>`
-        : `<a class="btn" href="login.html">Log in</a><a class="btn primary" href="signin.html">Sign up</a>`;
-      document.getElementById("logoutBtn")?.addEventListener("click", async()=>{ await signOut(auth); location.href="server.html"; });
-    });
-
-    function sortWorlds(worlds){
-      return worlds.sort((a,b)=>{
-        const at = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-        const bt = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-        return bt-at;
-      });
+async function renderWorlds(){
+  worldList.innerHTML = '<div class="server-empty">Loading games...</div>';
+  statusLine.textContent = "Loading games...";
+  try{
+    const snap = await getDocs(collection(db,"worlds"));
+    const worlds = [];
+    snap.forEach(d=>worlds.push({id:d.id,...d.data()}));
+    sortWorlds(worlds);
+    statusLine.textContent = `${worlds.length} published game${worlds.length===1?"":"s"}`;
+    if(!worlds.length){
+      worldList.innerHTML = '<div class="server-empty">No published games yet. Open Studio, build something, then press Publish.</div>';
+      return;
     }
-
-    async function renderWorlds(){
-      worldList.innerHTML = '<div class="server-empty">Loading games...</div>';
-      statusLine.textContent = "Loading games...";
-      try{
-        const snap = await getDocs(collection(db,"worlds"));
-        const worlds = [];
-        snap.forEach(d=>worlds.push({id:d.id,...d.data()}));
-        sortWorlds(worlds);
-        statusLine.textContent = `${worlds.length} published game${worlds.length===1?"":"s"}`;
-
-        if(!worlds.length){
-          worldList.innerHTML = '<div class="server-empty">No published games yet. Open Studio, build something, then press Publish.</div>';
-          return;
-        }
-
-        worldList.innerHTML = worlds.map(w=>`
-          <div class="server-card">
-            <div class="server-top">
-              <div>
-                <div class="server-name">${esc(w.title || "Untitled OHS World")}</div>
-                <div class="server-meta">by ${esc(w.ownerName || "Unknown")} · ${esc(w.engine || "OHS")}</div>
-              </div>
-              <a class="btn primary" href="studio.html?world=${w.id}&play=1">Play</a>
-            </div>
-            <div class="server-description">${esc(w.description || "No description.")}</div>
-            <div class="server-badges">
-              <span class="badge">${w.playerCount || 0} / ${w.maxPlayers || 8} players</span>
-              <span class="badge">${esc(w.status || "published")}</span>
-              <span class="badge">OHS world</span>
-            </div>
+    worldList.innerHTML = worlds.map(w=>`
+      <div class="server-card">
+        <div class="server-top">
+          <div>
+            <div class="server-name">${escapeHtml(w.title || "Untitled OHS World")}</div>
+            <div class="server-meta">by ${escapeHtml(w.ownerName || "Unknown")} · ${escapeHtml(w.engine || "OHS")}</div>
           </div>
-        `).join("");
-      }catch(err){
-        console.error("Could not load games:",err);
-        statusLine.textContent = "Failed to load games.";
-        worldList.innerHTML = `<div class="server-empty">Could not load games: ${esc(err.message)}<br><br>Update Firestore Rules using firestore-rules.txt.</div>`;
-      }
-    }
-
-    document.getElementById("refreshWorldsBtn").addEventListener("click", renderWorlds);
-    await renderWorlds();
+          <a class="btn primary" href="studio.html?world=${w.id}&play=1">Play</a>
+        </div>
+        <div class="server-description">${escapeHtml(w.description || "No description.")}</div>
+        <div class="server-badges">
+          <span class="badge">${w.playerCount || 0} / ${w.maxPlayers || 8} players</span>
+          <span class="badge">${escapeHtml(w.status || "published")}</span>
+          <span class="badge">OHS world</span>
+        </div>
+      </div>
+    `).join("");
+  }catch(err){
+    console.error("Could not load games:",err);
+    statusLine.textContent = "Failed to load games.";
+    worldList.innerHTML = `<div class="server-empty">Could not load games: ${escapeHtml(err.message)}<br><br>Update Firestore Rules using firestore-rules.txt.</div>`;
+  }
+}
+document.getElementById("refreshWorldsBtn").addEventListener("click", renderWorlds);
+await renderWorlds();
   </script>
 </body>
 </html>
