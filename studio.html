@@ -578,15 +578,23 @@ function avatarColorToHex(color){
 function setLocalPlayerColor(color){
  const hex=avatarColorToHex(color);
  if(playerBody?.material){
+  if(!playerBody.userData.ownMaterial){
+   playerBody.material=playerBody.material.clone();
+   playerBody.userData.ownMaterial=true;
+  }
   playerBody.material.color.setHex(hex);
-  playerBody.material.opacity=.68;
-  playerBody.material.transmission=.08;
-  playerBody.material.roughness=.18;
+  playerBody.material.opacity=.76;
+  playerBody.material.transmission=.03;
+  playerBody.material.roughness=.16;
   playerBody.material.needsUpdate=true;
  }
  if(playerGlow?.material){
+  if(!playerGlow.userData.ownMaterial){
+   playerGlow.material=playerGlow.material.clone();
+   playerGlow.userData.ownMaterial=true;
+  }
   playerGlow.material.color.setHex(hex);
-  playerGlow.material.opacity=.36;
+  playerGlow.material.opacity=.40;
   playerGlow.material.needsUpdate=true;
  }
 }
@@ -679,12 +687,12 @@ function makeOtherPlayerGroup(data){
   new THREE.MeshPhysicalMaterial({
    color,
    transparent:true,
-   opacity:.70,
+   opacity:.74,
    roughness:.16,
    metalness:.03,
    clearcoat:1,
    clearcoatRoughness:.12,
-   transmission:.06
+   transmission:.04
   })
  );
  body.castShadow=true;
@@ -698,23 +706,28 @@ function makeOtherPlayerGroup(data){
  glow.position.set(0,.08,.08);
  g.add(glow);
 
- // Sprite face is always readable from the local camera.
+ // Face = transparent plane/tile on the front of the sphere, like the local player.
+ // The canvas itself is transparent, so only the face lines are visible.
  const faceTex=createPlayerFaceCanvasTexture();
- const face=new THREE.Sprite(
-  new THREE.SpriteMaterial({
+ const face=new THREE.Mesh(
+  new THREE.PlaneGeometry(1.16,1.16),
+  new THREE.MeshBasicMaterial({
    map:faceTex,
    transparent:true,
    depthWrite:false,
    depthTest:true,
-   opacity:1
+   alphaTest:.02,
+   side:THREE.DoubleSide,
+   polygonOffset:true,
+   polygonOffsetFactor:-5,
+   polygonOffsetUnits:-5
   })
  );
- face.scale.set(1.32,1.32,1);
- face.position.set(0,.12,1.08);
- face.renderOrder=40;
+ face.position.set(0,.10,1.035);
+ face.renderOrder=60;
  g.add(face);
 
- // Sprite name tag always faces camera and looks cleaner than a 3D board.
+ // Name tag remains a sprite so it always faces the camera and looks clean.
  const nameTex=makeNameTagTexture(data.username||'Player');
  const tag=new THREE.Sprite(
   new THREE.SpriteMaterial({
@@ -727,10 +740,10 @@ function makeOtherPlayerGroup(data){
  );
  tag.scale.set(4.8,1.2,1);
  tag.position.set(0,2.55,0);
- tag.renderOrder=50;
+ tag.renderOrder=70;
  g.add(tag);
 
- g.userData.faceSprite=face;
+ g.userData.facePlane=face;
  g.userData.nameTag=tag;
  g.userData.glow=glow;
  g.userData.body=body;
@@ -753,8 +766,14 @@ function updateOtherPlayersFromSnapshot(snapshot){
    otherPlayers.set(id,g);
   }else if(g.userData.avatarColor !== (data.avatarColor||'green')){
    const color=avatarColorToHex(data.avatarColor);
-   if(g.userData.body?.material?.color)g.userData.body.material.color.setHex(color);
-   if(g.userData.glow?.material?.color)g.userData.glow.material.color.setHex(color);
+   if(g.userData.body?.material?.color){
+    g.userData.body.material.color.setHex(color);
+    g.userData.body.material.needsUpdate=true;
+   }
+   if(g.userData.glow?.material?.color){
+    g.userData.glow.material.color.setHex(color);
+    g.userData.glow.material.needsUpdate=true;
+   }
    g.userData.avatarColor=data.avatarColor||'green';
   }
   const pos=data.position||{};
