@@ -1,0 +1,180 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Oliom Horizons — Play Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root{
+      --lime:#7ed957;
+      --green:#1f5d19;
+      --green-2:#3f922e;
+      --muted:#667868;
+      --line:#d6efcf;
+      --text:#172819;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      height:100vh;
+      display:flex;
+      flex-direction:column;
+      font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color:var(--text);
+      background:#fff;
+      overflow:hidden;
+    }
+    header{
+      min-height:54px;
+      padding:8px 14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      border-bottom:1px solid var(--line);
+      background:rgba(255,255,255,.97);
+      z-index:3;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight:800;
+      color:var(--green);
+    }
+    .brand img{
+      width:36px;
+      height:36px;
+      object-fit:contain;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:3px;
+    }
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:34px;
+      padding:7px 13px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--green-2);
+      text-decoration:none;
+      font-size:14px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    .btn.primary{
+      background:var(--lime);
+      border-color:var(--lime);
+      color:#173019;
+    }
+    .actions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    #gameFrame{
+      flex:1;
+      width:100%;
+      border:0;
+      display:none;
+      background:#fff;
+    }
+    #status{
+      flex:1;
+      display:grid;
+      place-items:center;
+      padding:24px;
+      text-align:center;
+      color:var(--muted);
+    }
+    .card{
+      max-width:680px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:18px;
+      background:#fff;
+    }
+    .card h1{
+      margin-top:0;
+      color:var(--green-2);
+    }
+    .tiny{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.5;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="server.html" class="brand" style="text-decoration:none;">
+      <img src="https://res.cloudinary.com/duqlfltkd/image/upload/f_auto,q_auto/Logo_3_1_3_1_hrynwk" alt="Oliom Horizons logo">
+      <span>Oliom Horizons · Game</span>
+    </a>
+    <div class="actions">
+      <a href="server.html" class="btn">Back to Games</a>
+      <a id="openStudio" href="studio.html" class="btn">Open in Studio</a>
+      <button id="reloadBtn" class="btn primary">Reload Game</button>
+    </div>
+  </header>
+
+  <div id="status">
+    <div class="card">
+      <h1>Loading game...</h1>
+      <p id="statusText">Preparing the OHS engine.</p>
+      <p class="tiny">This page opens the published world in Play mode. If multiplayer is enabled, other logged-in players in the same world should appear as transparent spheres.</p>
+    </div>
+  </div>
+
+  <iframe id="gameFrame" title="Oliom Horizons Game"></iframe>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const worldId = params.get("world");
+    const statusBox = document.getElementById("status");
+    const statusText = document.getElementById("statusText");
+    const frame = document.getElementById("gameFrame");
+    const openStudio = document.getElementById("openStudio");
+    const reloadBtn = document.getElementById("reloadBtn");
+
+    function loadGame(){
+      if(!worldId){
+        statusText.textContent = "No world id was provided. Open a game from the Games page.";
+        reloadBtn.disabled = true;
+        return;
+      }
+
+      const src = "studio.html?world=" + encodeURIComponent(worldId) + "&play=1&fromGame=1&v=12";
+      openStudio.href = "studio.html?world=" + encodeURIComponent(worldId) + "&v=12";
+
+      statusBox.style.display = "grid";
+      frame.style.display = "none";
+      frame.src = src;
+
+      frame.onload = () => {
+        statusBox.style.display = "none";
+        frame.style.display = "block";
+      };
+
+      setTimeout(() => {
+        if(frame.style.display !== "block"){
+          statusText.textContent = "Still loading. If it stays here, open DevTools Console and check for a Firebase or script error.";
+        }
+      }, 4500);
+    }
+
+    reloadBtn.addEventListener("click", () => {
+      frame.src = "about:blank";
+      setTimeout(loadGame, 100);
+    });
+
+    loadGame();
+  </script>
+</body>
+</html>
