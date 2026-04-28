@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -518,6 +519,28 @@ let lastPresencePush = 0;
 
 function firebaseAuthReady(){return new Promise(resolve=>{const unsub=onAuthStateChanged(firebaseAuth,user=>{unsub();resolve(user);});});}
 function firebaseNormalize(name){return String(name||"").trim().toLowerCase().replace(/\s+/g,"_");}
+
+async function firebaseEnsureProfile(user){
+ const ref=doc(firebaseDb,"users",user.uid);
+ const snap=await getDoc(ref);
+ if(snap.exists())return {id:user.uid,...snap.data()};
+
+ const username=(user.displayName||user.email?.split("@")[0]||"Player").trim().slice(0,24);
+ const profile={
+  uid:user.uid,
+  username,
+  usernameLower:firebaseNormalize(username),
+  email:user.email||"",
+  avatar:"",
+  avatarColor:"green",
+  bio:"",
+  createdAt:serverTimestamp(),
+  updatedAt:serverTimestamp()
+ };
+ await setDoc(ref,profile,{merge:true});
+ return {id:user.uid,...profile};
+}
+
 
 async function firebaseRequirePublishUser(){
  const user=await firebaseAuthReady();
@@ -1353,6 +1376,7 @@ function ohsLoadWorldData(worldData){
  selectObject(null); refreshExplorer(); pushHistory(); toast("World loaded");
 }
 async function publishOhsWorld(){
+ console.log("OHS Publish clicked");
  if(playMode){toast("Stop Play Test before publishing");return}
  const status=document.getElementById("firebaseStatus");
  syncActiveScript();
@@ -1381,6 +1405,7 @@ async function publishOhsWorld(){
   alert("Publish failed: "+err.message+"\n\nOpen Firebase > Firestore Database > Rules and paste firestore-rules.txt from the newest ZIP.");
  }finally{ publishBtn.disabled=false; publishBtn.textContent="Publish"; }
 }
+window.OH_publishWorld = publishOhsWorld;
 async function loadPublishedWorldFromUrl(){
  const params=new URLSearchParams(location.search);
  const worldId=params.get("world");
