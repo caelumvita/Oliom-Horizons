@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -59,6 +58,11 @@
     </section>
 
     <section class="block">
+      <h2>Friend Requests</h2>
+      <div id="friendRequestsList"><p class="comment-empty">Sign in to see friend requests.</p></div>
+    </section>
+
+    <section class="block">
       <h2>Friends</h2>
       <div id="friendsList"><p class="comment-empty">Sign in to see friends.</p></div>
     </section>
@@ -87,7 +91,7 @@
         </div>
         <div id="profileBio" class="profile-bio" style="margin-top:10px;">No bio yet.</div>
         <div class="row-actions" style="margin-top:12px;">
-          <button id="addFriendBtn" class="btn primary">Add friend</button>
+          <button id="addFriendBtn" class="btn primary">Send friend request</button>
           <span id="profileMsg" class="tiny"></span>
         </div>
       </div>
@@ -98,7 +102,7 @@
 import {
   auth, db, $, AVATARS, DEFAULT_AVATAR, escapeHtml, avatarUrl, avatarColorFromUrl,
   renderHeaderAuth, authReady, ensureProfile, updateProfileData,
-  collection, getDocs, query, orderBy, addDoc, serverTimestamp, where, doc, setDoc
+  collection, getDocs, query, orderBy, addDoc, serverTimestamp, where, doc, setDoc, updateDoc, deleteDoc
 } from "./firebase-core.js";
 
 let currentUser = null;
@@ -195,18 +199,150 @@ function openProfile(user) {
   $("addFriendBtn").style.display = user.id === currentUser?.uid ? "none" : "inline-flex";
   $("profileModal").classList.add("show");
 }
+function friendshipIdFor(a,b){
+  const ids = [a,b].sort();
+  return `${ids[0]}_${ids[1]}`;
+}
+function requestIdFor(from,to){
+  return `${from}_${to}`;
+}
 async function addFriend() {
   if (!currentUser || !currentProfile || !selectedProfile || selectedProfile.id === currentUser.uid) return;
-  const ids = [currentUser.uid, selectedProfile.id].sort();
-  const friendshipId = `${ids[0]}_${ids[1]}`;
-  await setDoc(doc(db, "friends", friendshipId), {
-    users: ids, userA: ids[0], userB: ids[1],
-    names: {[currentUser.uid]: currentProfile.username, [selectedProfile.id]: selectedProfile.username},
-    avatars: {[currentUser.uid]: currentProfile.avatar || DEFAULT_AVATAR, [selectedProfile.id]: selectedProfile.avatar || DEFAULT_AVATAR},
+
+  const friendshipId = friendshipIdFor(currentUser.uid, selectedProfile.id);
+  const requestId = requestIdFor(currentUser.uid, selectedProfile.id);
+
+  await setDoc(doc(db, "friendRequests", requestId), {
+    fromId: currentUser.uid,
+    toId: selectedProfile.id,
+    fromName: currentProfile.username,
+    toName: selectedProfile.username || "Player",
+    fromAvatar: currentProfile.avatar || DEFAULT_AVATAR,
+    toAvatar: selectedProfile.avatar || DEFAULT_AVATAR,
+    friendshipId,
+    status: "pending",
     createdAt: serverTimestamp()
   }, { merge: true });
-  $("profileMsg").textContent = "Friend added.";
+
+  $("profileMsg").textContent = "Friend request sent.";
+  await renderFriendRequests();
+}
+
+async function acceptFriendRequest(request) {
+  if (!currentUser || !currentProfile || !request || request.toId !== currentUser.uid) return;
+
+  const friendshipId = request.friendshipId || friendshipIdFor(request.fromId, request.toId);
+  const ids = [request.fromId, request.toId].sort();
+
+  await setDoc(doc(db, "friends", friendshipId), {
+    users: ids,
+    userA: ids[0],
+    userB: ids[1],
+    names: {
+      [request.fromId]: request.fromName || "Player",
+      [request.toId]: currentProfile.username || request.toName || "Player"
+    },
+    avatars: {
+      [request.fromId]: request.fromAvatar || DEFAULT_AVATAR,
+      [request.toId]: currentProfile.avatar || request.toAvatar || DEFAULT_AVATAR
+    },
+    createdAt: serverTimestamp()
+  }, { merge: true });
+
+  await updateDoc(doc(db, "friendRequests", request.id), {
+    status: "accepted",
+    acceptedAt: serverTimestamp()
+  });
+
+  await renderFriendRequests();
   await renderFriends();
+}
+
+async function declineFriendRequest(request) {
+  if (!currentUser || !request || request.toId !== currentUser.uid) return;
+  await updateDoc(doc(db, "friendRequests", request.id), {
+    status: "declined",
+    declinedAt: serverTimestamp()
+  });
+  await renderFriendRequests();
+}
+
+async function renderFriendRequests() {
+  const box = $("friendRequestsList");
+  if (!currentUser) { box.innerHTML = '<p class="comment-empty">Sign in to see friend requests.</p>'; return; }
+
+  try {
+    const incomingQ = query(collection(db, "friendRequests"), where("toId", "==", currentUser.uid));
+    const outgoingQ = query(collection(db, "friendRequests"), where("fromId", "==", currentUser.uid));
+    const [incomingSnap, outgoingSnap] = await Promise.all([getDocs(incomingQ), getDocs(outgoingQ)]);
+
+    const incoming = [];
+    const outgoing = [];
+
+    incomingSnap.forEach(d => {
+      const r = { id: d.id, ...d.data() };
+      if (r.status === "pending") incoming.push(r);
+    });
+
+    outgoingSnap.forEach(d => {
+      const r = { id: d.id, ...d.data() };
+      if (r.status === "pending") outgoing.push(r);
+    });
+
+    if (!incoming.length && !outgoing.length) {
+      box.innerHTML = '<p class="comment-empty">No pending friend requests.</p>';
+      return;
+    }
+
+    const incomingHtml = incoming.map(r => `
+      <div class="friend-card">
+        <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <img src="${avatarUrl(r.fromAvatar)}" class="friend-avatar" alt="Avatar">
+            <div>
+              <div class="friend-name">${escapeHtml(r.fromName || "Player")}</div>
+              <div class="tiny">Wants to add you as a friend</div>
+            </div>
+          </div>
+          <div class="row-actions">
+            <button class="btn primary" data-accept="${r.id}">Accept</button>
+            <button class="btn danger" data-decline="${r.id}">Decline</button>
+          </div>
+        </div>
+      </div>
+    `).join("");
+
+    const outgoingHtml = outgoing.map(r => `
+      <div class="friend-card">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <img src="${avatarUrl(r.toAvatar)}" class="friend-avatar" alt="Avatar">
+          <div>
+            <div class="friend-name">${escapeHtml(r.toName || "Player")}</div>
+            <div class="tiny">Request sent</div>
+          </div>
+        </div>
+      </div>
+    `).join("");
+
+    box.innerHTML = incomingHtml + outgoingHtml;
+
+    [...box.querySelectorAll("[data-accept]")].forEach(btn => {
+      btn.addEventListener("click", () => {
+        const req = incoming.find(r => r.id === btn.dataset.accept);
+        acceptFriendRequest(req);
+      });
+    });
+
+    [...box.querySelectorAll("[data-decline]")].forEach(btn => {
+      btn.addEventListener("click", () => {
+        const req = incoming.find(r => r.id === btn.dataset.decline);
+        declineFriendRequest(req);
+      });
+    });
+  } catch (err) {
+    console.error("Friend requests failed:", err);
+    box.innerHTML = `<p class="comment-empty">Friend requests could not load: ${escapeHtml(err.message)}<br>Update Firestore Rules with the newest file.</p>`;
+  }
 }
 async function renderFriends() {
   const box = $("friendsList");
@@ -261,6 +397,7 @@ $("addFriendBtn").addEventListener("click", addFriend);
 $("postCommentBtn").addEventListener("click", postComment);
 
 await renderUserCard();
+await renderFriendRequests();
 await renderFriends();
 await renderComments();
 
