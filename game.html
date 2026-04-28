@@ -109,6 +109,95 @@
       color:var(--muted);
       line-height:1.5;
     }
+  
+    #chatPanel{
+      position:fixed;
+      left:12px;
+      bottom:12px;
+      width:min(420px,calc(100vw - 24px));
+      max-height:260px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      padding:10px;
+      border:1px solid rgba(214,239,207,.95);
+      border-radius:16px;
+      background:rgba(255,255,255,.82);
+      backdrop-filter:blur(8px);
+      z-index:6;
+      box-shadow:0 8px 24px rgba(23,40,25,.08);
+    }
+    #chatPanel.collapsed #chatMessages,
+    #chatPanel.collapsed #chatForm,
+    #chatPanel.collapsed #chatStatus{
+      display:none;
+    }
+    #chatHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      font-size:13px;
+      font-weight:800;
+      color:var(--green);
+      cursor:default;
+    }
+    #chatToggle{
+      min-height:26px;
+      padding:3px 9px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--green-2);
+      font-weight:800;
+      cursor:pointer;
+    }
+    #chatMessages{
+      height:150px;
+      overflow:auto;
+      display:flex;
+      flex-direction:column;
+      gap:5px;
+      padding-right:4px;
+    }
+    .chatMsg{
+      font-size:13px;
+      line-height:1.35;
+      color:var(--text);
+      word-break:break-word;
+    }
+    .chatName{
+      font-weight:800;
+      color:var(--green-2);
+    }
+    #chatForm{
+      display:flex;
+      gap:6px;
+    }
+    #chatInput{
+      flex:1;
+      min-width:0;
+      border-radius:999px;
+      border:1px solid var(--line);
+      padding:8px 11px;
+      outline:none;
+      background:#fff;
+      color:var(--text);
+    }
+    #chatSend{
+      border:0;
+      border-radius:999px;
+      padding:8px 12px;
+      background:var(--lime);
+      color:#173019;
+      font-weight:900;
+      cursor:pointer;
+    }
+    #chatStatus{
+      font-size:11px;
+      color:var(--muted);
+    }
+
   </style>
 </head>
 <body>
@@ -133,6 +222,22 @@
 
   <iframe id="gameFrame" title="Oliom Horizons Game" allow="pointer-lock; fullscreen"></iframe>
 
+  <section id="chatPanel">
+    <div id="chatHeader">
+      <span>World Chat</span>
+      <button id="chatToggle" type="button">Hide</button>
+    </div>
+    <div id="chatMessages">
+      <div class="chatMsg"><span class="chatName">System:</span> Loading chat...</div>
+    </div>
+    <form id="chatForm">
+      <input id="chatInput" maxlength="160" autocomplete="off" placeholder="Type message..." />
+      <button id="chatSend" type="submit">Send</button>
+    </form>
+    <div id="chatStatus">Sign in to chat.</div>
+  </section>
+
+
   <script>
     const params = new URLSearchParams(location.search);
     const worldId = params.get("world");
@@ -148,7 +253,7 @@
         return;
       }
 
-      const src = "studio.html?world=" + encodeURIComponent(worldId) + "&play=1&fromGame=1&v=15";
+      const src = "studio.html?world=" + encodeURIComponent(worldId) + "&play=1&fromGame=1&v=16";
       statusBox.style.display = "grid";
       frame.style.display = "none";
       frame.src = src;
@@ -172,5 +277,107 @@
 
     loadGame();
   </script>
+
+  <script type="module">
+    import {
+      authReady,
+      ensureProfile,
+      db,
+      escapeHtml,
+      collection,
+      addDoc,
+      query,
+      orderBy,
+      limit,
+      onSnapshot,
+      serverTimestamp
+    } from "./firebase-core.js";
+
+    const chatPanel = document.getElementById("chatPanel");
+    const chatMessages = document.getElementById("chatMessages");
+    const chatForm = document.getElementById("chatForm");
+    const chatInput = document.getElementById("chatInput");
+    const chatStatus = document.getElementById("chatStatus");
+    const chatToggle = document.getElementById("chatToggle");
+
+    const chatParams = new URLSearchParams(location.search);
+    const chatWorldId = chatParams.get("world");
+    let chatUser = null;
+    let chatProfile = null;
+
+    function renderChatMessage(m){
+      const name = escapeHtml(m.authorName || "Player");
+      const text = escapeHtml(m.text || "");
+      return `<div class="chatMsg"><span class="chatName">${name}:</span> ${text}</div>`;
+    }
+
+    function scrollChatBottom(){
+      chatMessages.scrollTop = chatMessages.scrollHeight + 1000;
+    }
+
+    async function initChat(){
+      if(!chatWorldId){
+        chatStatus.textContent = "Open a game from Games to use chat.";
+        chatInput.disabled = true;
+        return;
+      }
+
+      chatUser = await authReady();
+      if(!chatUser){
+        chatStatus.textContent = "Log in to chat. You can still read messages.";
+        chatInput.disabled = true;
+      }else{
+        chatProfile = await ensureProfile(chatUser);
+        chatStatus.textContent = `Chatting as ${chatProfile.username || "Player"}`;
+        chatInput.disabled = false;
+      }
+
+      const chatRef = collection(db, "worlds", chatWorldId, "chat");
+      const q = query(chatRef, orderBy("createdAt", "asc"), limit(60));
+
+      onSnapshot(q, snap => {
+        const rows = [];
+        snap.forEach(d => rows.push({ id:d.id, ...d.data() }));
+        chatMessages.innerHTML = rows.length
+          ? rows.map(renderChatMessage).join("")
+          : '<div class="chatMsg"><span class="chatName">System:</span> No messages yet.</div>';
+        scrollChatBottom();
+      }, err => {
+        console.error("Chat failed:", err);
+        chatMessages.innerHTML = `<div class="chatMsg"><span class="chatName">System:</span> Chat error: ${escapeHtml(err.message)}</div>`;
+      });
+    }
+
+    chatForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      if(!chatWorldId || !chatUser || !chatProfile) return;
+      const text = chatInput.value.trim().slice(0,160);
+      if(!text) return;
+      chatInput.value = "";
+      try{
+        await addDoc(collection(db, "worlds", chatWorldId, "chat"), {
+          authorId: chatUser.uid,
+          authorName: chatProfile.username || "Player",
+          text,
+          createdAt: serverTimestamp()
+        });
+      }catch(err){
+        console.error("Send chat failed:", err);
+        chatStatus.textContent = "Chat send failed: " + err.message;
+      }
+    });
+
+    chatInput.addEventListener("focus", () => {
+      document.exitPointerLock?.();
+    });
+
+    chatToggle.addEventListener("click", () => {
+      chatPanel.classList.toggle("collapsed");
+      chatToggle.textContent = chatPanel.classList.contains("collapsed") ? "Show" : "Hide";
+    });
+
+    await initChat();
+  </script>
+
 </body>
 </html>
