@@ -47,4 +47,4 @@ export async function renderHeaderAuth(){
   authBox.innerHTML=`<a class="btn primary" href="studio.html">Studio</a><span class="tiny">Signed in as ${escapeHtml(profile?.username||user.email)}</span><button class="btn danger" id="logoutBtn">Log out</button>`;
   document.getElementById("logoutBtn")?.addEventListener("click",async()=>{ await signOut(auth); location.href="server.html"; });
 }
-export { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, doc, getDoc, setDoc, updateDoc, collection, addDoc, getDocs, query, orderBy, where, limit, serverTimestamp };
+export { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, addDoc, getDocs, query, orderBy, where, limit, onSnapshot, serverTimestamp };
