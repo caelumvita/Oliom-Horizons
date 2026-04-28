@@ -127,11 +127,11 @@
     <div class="card">
       <h1>Loading game...</h1>
       <p id="statusText">Preparing the OHS engine.</p>
-      <p class="tiny">This page opens the published world in player-only mode. Other logged-in players in the same world should appear as colored characters.</p>
+      <p class="tiny">This page opens the published world in player-only mode.</p>
     </div>
   </div>
 
-  <iframe id="gameFrame" title="Oliom Horizons Game"></iframe>
+  <iframe id="gameFrame" title="Oliom Horizons Game" allow="pointer-lock; fullscreen"></iframe>
 
   <script>
     const params = new URLSearchParams(location.search);
@@ -148,7 +148,7 @@
         return;
       }
 
-      const src = "studio.html?world=" + encodeURIComponent(worldId) + "&play=1&fromGame=1&v=14";
+      const src = "studio.html?world=" + encodeURIComponent(worldId) + "&play=1&fromGame=1&v=15";
       statusBox.style.display = "grid";
       frame.style.display = "none";
       frame.src = src;
