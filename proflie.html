@@ -17,7 +17,6 @@
       <a href="server.html" class="btn primary">Games</a>
       <a href="studio.html" class="btn">Studio</a>
       <a href="profile.html" class="btn">Profile</a>
-      <a href="moderation.html" class="btn">Moderation</a>
       <a href="rules.html" class="btn">Rules</a>
     </nav>
     <div class="auth-buttons" data-auth></div>
@@ -98,7 +97,7 @@
   <script type="module">
 import {
   auth, db, $, AVATARS, DEFAULT_AVATAR, escapeHtml, avatarUrl, avatarColorFromUrl,
-  renderHeaderAuth, authReady, ensureProfile, updateProfileData, checkAccountStatusOrBlock, touchUserDevice,
+  renderHeaderAuth, authReady, ensureProfile, updateProfileData,
   collection, getDocs, query, orderBy, addDoc, serverTimestamp, where, doc, setDoc
 } from "./firebase-core.js";
 
@@ -119,10 +118,7 @@ async function renderUserCard() {
     $("openEditProfile").style.display = "none";
     $("commentInfo").textContent = "Sign in to post comments.";
     return;
-  }
-  if (await checkAccountStatusOrBlock(currentUser)) return;
-  await touchUserDevice(currentUser);
-  currentProfile = await ensureProfile(currentUser);
+  }  currentProfile = await ensureProfile(currentUser);
   $("welcomeText").textContent = `Welcome ${currentProfile.username}`;
   $("userNameDisplay").textContent = currentProfile.username;
   $("userAvatar").src = avatarUrl(currentProfile.avatar);
