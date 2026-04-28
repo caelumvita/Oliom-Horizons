@@ -334,6 +334,23 @@
     #topActions button{font-size:11px;padding:7px 8px;min-height:34px}
   }
 
+
+body.game-page-mode #topbar{
+  opacity:.08;
+  transition:opacity .15s ease;
+}
+body.game-page-mode #topbar:hover{
+  opacity:1;
+}
+body.game-page-mode #left,
+body.game-page-mode #right,
+body.game-page-mode #bottom,
+body.game-page-mode #scriptOverlay{
+  display:none !important;
+}
+body.game-page-mode #game{
+  inset:0 !important;
+}
 </style>
 </head>
 <body>
@@ -476,7 +493,7 @@
 import * as THREE from 'https://unpkg.com/three@0.165.0/build/three.module.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBbNRWbaSQfz8_5Wb0wqr7fpI2tuiybSNs",
@@ -492,6 +509,13 @@ const firebaseApp = initializeApp(firebaseConfig);
 const firebaseAuth = getAuth(firebaseApp);
 const firebaseDb = getFirestore(firebaseApp);
 
+let activeMultiplayerWorldId = null;
+let multiplayerUser = null;
+let multiplayerProfile = null;
+let unsubscribeMultiplayer = null;
+let otherPlayers = new Map();
+let lastPresencePush = 0;
+
 function firebaseAuthReady(){return new Promise(resolve=>{const unsub=onAuthStateChanged(firebaseAuth,user=>{unsub();resolve(user);});});}
 function firebaseNormalize(name){return String(name||"").trim().toLowerCase().replace(/\s+/g,"_");}
 
@@ -499,6 +523,136 @@ async function firebaseRequirePublishUser(){
  const user=await firebaseAuthReady();
  if(!user){alert("Please log in before publishing.");location.href="login.html";return null;}
  const profile=await firebaseEnsureProfile(user); return {user,profile};
+}
+
+function multiplayerColorFromAvatarColor(color){
+ const map = {green:0x7ed957, blue:0x59a8ff, red:0xff6b6b, orange:0xffb347};
+ return map[color || "green"] || 0x7ed957;
+}
+
+function makeOtherPlayerGroup(data){
+ const g = new THREE.Group();
+ const body = new THREE.Mesh(
+  new THREE.SphereGeometry(1,24,18),
+  new THREE.MeshPhysicalMaterial({
+   color:multiplayerColorFromAvatarColor(data.avatarColor),
+   transparent:true,
+   opacity:.58,
+   roughness:.18,
+   metalness:.02,
+   clearcoat:.8
+  })
+ );
+ body.castShadow=true;
+ body.receiveShadow=true;
+ g.add(body);
+
+ const canvas=document.createElement('canvas');
+ canvas.width=512; canvas.height=128;
+ const ctx=canvas.getContext('2d');
+ ctx.fillStyle='rgba(255,255,255,.86)';
+ ctx.fillRect(0,0,512,128);
+ ctx.fillStyle='rgba(31,93,25,.95)';
+ ctx.font='bold 44px system-ui, sans-serif';
+ ctx.textAlign='center';
+ ctx.textBaseline='middle';
+ ctx.fillText((data.username||'Player').slice(0,18),256,64);
+ const tex=new THREE.CanvasTexture(canvas);
+ const label=new THREE.Mesh(
+  new THREE.PlaneGeometry(3.5,.85),
+  new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false})
+ );
+ label.position.set(0,2.1,0);
+ label.renderOrder=20;
+ g.add(label);
+ scene.add(g);
+ return g;
+}
+
+function updateOtherPlayersFromSnapshot(snapshot){
+ const seen = new Set();
+ snapshot.forEach(docSnap=>{
+  const id=docSnap.id;
+  if(multiplayerUser && id===multiplayerUser.uid)return;
+  const data=docSnap.data();
+  if(!data || data.active===false)return;
+  seen.add(id);
+  let g=otherPlayers.get(id);
+  if(!g){
+   g=makeOtherPlayerGroup(data);
+   otherPlayers.set(id,g);
+  }
+  const pos=data.position||{};
+  g.position.set(Number(pos.x||0),Number(pos.y||2),Number(pos.z||0));
+  g.rotation.y=Number(data.yaw||0);
+ });
+
+ for(const [id,g] of [...otherPlayers.entries()]){
+  if(!seen.has(id)){
+   scene.remove(g);
+   otherPlayers.delete(id);
+  }
+ }
+}
+
+async function startMultiplayerSession(worldId){
+ if(!worldId)return;
+ const user=await firebaseAuthReady();
+ if(!user)return;
+ const profile=await firebaseEnsureProfile(user);
+ activeMultiplayerWorldId=worldId;
+ multiplayerUser=user;
+ multiplayerProfile=profile;
+
+ const playerRef=doc(firebaseDb,"worlds",worldId,"players",user.uid);
+ await setDoc(playerRef,{
+  uid:user.uid,
+  username:profile.username||user.email||"Player",
+  avatarColor:profile.avatarColor||"green",
+  active:true,
+  position:{x:player.position.x,y:player.position.y,z:player.position.z},
+  yaw:player.facingYaw||0,
+  updatedAt:serverTimestamp()
+ },{merge:true});
+
+ unsubscribeMultiplayer?.();
+ unsubscribeMultiplayer=onSnapshot(collection(firebaseDb,"worlds",worldId,"players"),updateOtherPlayersFromSnapshot);
+ window.addEventListener("beforeunload",()=>{try{deleteDoc(playerRef)}catch(e){}},{once:true});
+ toast("Multiplayer session joined");
+}
+
+async function stopMultiplayerSession(){
+ const worldId=activeMultiplayerWorldId;
+ const user=multiplayerUser;
+ unsubscribeMultiplayer?.();
+ unsubscribeMultiplayer=null;
+ for(const [,g] of otherPlayers){scene.remove(g);}
+ otherPlayers.clear();
+ activeMultiplayerWorldId=null;
+ multiplayerUser=null;
+ multiplayerProfile=null;
+ if(worldId && user){
+  try{await deleteDoc(doc(firebaseDb,"worlds",worldId,"players",user.uid));}catch(err){console.warn("Could not leave multiplayer session",err);}
+ }
+}
+
+async function pushMultiplayerPresence(elapsed){
+ if(!activeMultiplayerWorldId || !multiplayerUser || !playMode || physicsOnlyMode)return;
+ if(elapsed-lastPresencePush<0.18)return;
+ lastPresencePush=elapsed;
+ try{
+  await setDoc(doc(firebaseDb,"worlds",activeMultiplayerWorldId,"players",multiplayerUser.uid),{
+   uid:multiplayerUser.uid,
+   username:multiplayerProfile?.username||"Player",
+   avatarColor:multiplayerProfile?.avatarColor||"green",
+   active:true,
+   position:{x:player.position.x,y:player.position.y,z:player.position.z},
+   yaw:player.facingYaw||0,
+   updatedAt:serverTimestamp()
+  },{merge:true});
+ }catch(err){
+  console.warn("Presence update failed",err);
+ }
 }
 
 const wrap=document.getElementById('game');
@@ -1230,6 +1384,7 @@ async function publishOhsWorld(){
 async function loadPublishedWorldFromUrl(){
  const params=new URLSearchParams(location.search);
  const worldId=params.get("world");
+ const launchedFromGamePage=params.get("fromGame")==="1";
  if(!worldId)return;
  try{
   const snap=await getDoc(doc(firebaseDb,"worlds",worldId));
@@ -1238,7 +1393,7 @@ async function loadPublishedWorldFromUrl(){
   ohsLoadWorldData(world.worldData);
   document.title=(world.title||"OHS World")+" — Oliom Horizons";
   const status=document.getElementById("firebaseStatus"); if(status)status.textContent="Loaded published game";
-  if(params.get("play")==="1"){setTimeout(()=>{try{startPlayerTest()}catch(err){console.error(err);toast("Play load error: "+err.message)}},650);}
+  if(params.get("play")==="1"){setTimeout(()=>{try{startPlayerTest();startMultiplayerSession(worldId);if(launchedFromGamePage){document.body.classList.add('game-page-mode');}}catch(err){console.error(err);toast("Play load error: "+err.message)}},650);}
  }catch(err){console.error("Load published world failed:",err);alert("Failed to load world: "+err.message);}
 }
 
@@ -1735,6 +1890,7 @@ function startPlayerTest(){
  toast('Player spawned');
 }
 function stopTest(){
+ stopMultiplayerSession();
  if(!playMode)return;
  playMode=false;
  physicsOnlyMode=false;
@@ -2010,7 +2166,7 @@ function updateCamera(dt){
  camera.position.copy(rig.currentPos);
  camera.lookAt(rig.lookPos);
 }
-function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.033);updateEditorFly(dt);simulate(dt);if(playMode&&!physicsOnlyMode)updatePlayer(dt,clock.elapsedTime);updateCamera(dt);updateBox();updateGizmo();if(skyDome)skyDome.position.copy(camera.position);renderer.render(scene,camera)}
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.033);updateEditorFly(dt);simulate(dt);if(playMode&&!physicsOnlyMode){updatePlayer(dt,clock.elapsedTime);pushMultiplayerPresence(clock.elapsedTime);}updateCamera(dt);updateBox();updateGizmo();if(skyDome)skyDome.position.copy(camera.position);renderer.render(scene,camera)}
 animate();
 
 addObject('cube');if(selected){selected.position.set(-3,1,0);selected.userData.name='Start Cube'}
