@@ -495,23 +495,11 @@ const firebaseDb = getFirestore(firebaseApp);
 
 function firebaseAuthReady(){return new Promise(resolve=>{const unsub=onAuthStateChanged(firebaseAuth,user=>{unsub();resolve(user);});});}
 function firebaseNormalize(name){return String(name||"").trim().toLowerCase().replace(/\s+/g,"_");}
-function firebaseDeviceId(){let id=localStorage.getItem("oh_device_id_v1");if(!id){id="dev_"+crypto.randomUUID();localStorage.setItem("oh_device_id_v1",id);}return id;}
-async function firebaseEnsureProfile(user){
- const ref=doc(firebaseDb,"users",user.uid);
- const snap=await getDoc(ref);
- if(snap.exists())return {id:user.uid,...snap.data()};
- const username=(user.displayName||user.email?.split("@")[0]||"Player").trim().slice(0,24);
- const profile={uid:user.uid,username,usernameLower:firebaseNormalize(username),email:user.email||"",avatar:"",avatarColor:"green",bio:"",status:"active",lastDeviceId:firebaseDeviceId(),createdAt:serverTimestamp(),updatedAt:serverTimestamp()};
- await setDoc(ref,profile,{merge:true});
- return {id:user.uid,...profile};
-}
+
 async function firebaseRequirePublishUser(){
  const user=await firebaseAuthReady();
  if(!user){alert("Please log in before publishing.");location.href="login.html";return null;}
- const profile=await firebaseEnsureProfile(user);
- if(profile.status==="account_deleted"||profile.status==="banned"){alert(profile.banMessage||profile.banReason||"This account is blocked by moderation.");return null;}
- await setDoc(doc(firebaseDb,"users",user.uid),{lastDeviceId:firebaseDeviceId(),lastSeenAt:serverTimestamp()},{merge:true});
- return {user,profile};
+ const profile=await firebaseEnsureProfile(user); return {user,profile};
 }
 
 const wrap=document.getElementById('game');
