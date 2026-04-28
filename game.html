@@ -119,7 +119,6 @@
     </a>
     <div class="actions">
       <a href="server.html" class="btn">Back to Games</a>
-      <a id="openStudio" href="studio.html" class="btn">Open in Studio</a>
       <button id="reloadBtn" class="btn primary">Reload Game</button>
     </div>
   </header>
@@ -128,7 +127,7 @@
     <div class="card">
       <h1>Loading game...</h1>
       <p id="statusText">Preparing the OHS engine.</p>
-      <p class="tiny">This page opens the published world in Play mode. If multiplayer is enabled, other logged-in players in the same world should appear as transparent spheres.</p>
+      <p class="tiny">This page opens the published world in player-only mode. Other logged-in players in the same world should appear as colored characters.</p>
     </div>
   </div>
 
@@ -140,7 +139,6 @@
     const statusBox = document.getElementById("status");
     const statusText = document.getElementById("statusText");
     const frame = document.getElementById("gameFrame");
-    const openStudio = document.getElementById("openStudio");
     const reloadBtn = document.getElementById("reloadBtn");
 
     function loadGame(){
@@ -150,9 +148,7 @@
         return;
       }
 
-      const src = "studio.html?world=" + encodeURIComponent(worldId) + "&play=1&fromGame=1&v=12";
-      openStudio.href = "studio.html?world=" + encodeURIComponent(worldId) + "&v=12";
-
+      const src = "studio.html?world=" + encodeURIComponent(worldId) + "&play=1&fromGame=1&v=14";
       statusBox.style.display = "grid";
       frame.style.display = "none";
       frame.src = src;
