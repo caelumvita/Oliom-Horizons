@@ -230,7 +230,6 @@ async function addFriend() {
 
 async function acceptFriendRequest(request) {
   if (!currentUser || !currentProfile || !request || request.toId !== currentUser.uid) return;
-
   const friendshipId = request.friendshipId || friendshipIdFor(request.fromId, request.toId);
   const ids = [request.fromId, request.toId].sort();
 
@@ -275,7 +274,6 @@ async function renderFriendRequests() {
     const incomingQ = query(collection(db, "friendRequests"), where("toId", "==", currentUser.uid));
     const outgoingQ = query(collection(db, "friendRequests"), where("fromId", "==", currentUser.uid));
     const [incomingSnap, outgoingSnap] = await Promise.all([getDocs(incomingQ), getDocs(outgoingQ)]);
-
     const incoming = [];
     const outgoing = [];
 
