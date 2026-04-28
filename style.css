@@ -52,3 +52,54 @@ h1,h2,h3,.welcome-text{color:var(--green-2)}.welcome-text{font-size:18px;margin:
 .modal-close{position:absolute;right:10px;top:10px}.profile-row{display:flex;gap:12px;align-items:center}
 .server-form{display:grid;gap:10px}.server-form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}.server-form label{display:grid;gap:6px;font-size:13px;font-weight:700;color:var(--green)}
 @media(max-width:760px){header{position:relative}.main-nav,.auth-buttons{width:100%}.btn{flex:1}.avatar-grid{grid-template-columns:repeat(2,1fr)}.logo-card{max-width:100%}}
+
+
+html[data-theme="dark"]{
+  --paper:#111b12;
+  --lime:#65c944;
+  --lime-hover:#73d452;
+  --green:#93df77;
+  --green-2:#82db65;
+  --text:#eef7eb;
+  --muted:#b7c9b2;
+  --line:#2f4b31;
+  --line-2:#3c653d;
+  --danger:#df6b6b;
+  --soft-green:#172617;
+}
+html[data-theme="dark"] body{
+  background:#0f170f;
+  color:var(--text);
+}
+html[data-theme="dark"] header{
+  background:rgba(15,23,15,.96);
+}
+html[data-theme="dark"] .block,
+html[data-theme="dark"] .user-panel,
+html[data-theme="dark"] .server-card,
+html[data-theme="dark"] .rule-card,
+html[data-theme="dark"] .friend-card,
+html[data-theme="dark"] .comment,
+html[data-theme="dark"] .user-result,
+html[data-theme="dark"] .modal-card,
+html[data-theme="dark"] .logo-card{
+  background:#121f13;
+}
+html[data-theme="dark"] .btn,
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select,
+html[data-theme="dark"] .server-empty,
+html[data-theme="dark"] .badge{
+  background:#0f1a10;
+  color:var(--text);
+}
+html[data-theme="dark"] .btn.primary{
+  color:#102011;
+}
+html[data-theme="dark"] .brand-logo{
+  background:#132313;
+}
+html[data-theme="dark"] footer{
+  background:#0b130c;
+}
