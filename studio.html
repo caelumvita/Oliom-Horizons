@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -389,6 +388,50 @@ html[data-theme="dark"] #rightPanel,
 html[data-theme="dark"] #bottomHint,
 html[data-theme="dark"] #scriptOverlay{
   background:rgba(14,24,15,.82) !important;
+  border-color:#2f4b31 !important;
+  color:#eef7eb !important;
+}
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select{
+  background:#0f1a10 !important;
+  color:#eef7eb !important;
+  border-color:#2f4b31 !important;
+}
+
+/* V18_RUNTIME_LOCK */
+body.game-page-mode #topbar,
+body.game-page-mode #leftPanel,
+body.game-page-mode #rightPanel,
+body.game-page-mode #bottomHint,
+body.game-page-mode #scriptOverlay,
+body.game-page-mode #playHelp,
+body.game-page-mode #playOverlay{
+  display:none !important;
+}
+body.game-page-mode #game{
+  inset:0 !important;
+}
+body.game-page-mode canvas{
+  cursor:none !important;
+}
+#dialogueBox,
+#dialogueBox *{
+  color:#111 !important;
+}
+#dialogueBox{
+  background:rgba(255,255,255,.94) !important;
+}
+html[data-theme="dark"] body{
+  background:#0f170f !important;
+}
+html[data-theme="dark"] .glass,
+html[data-theme="dark"] #topbar,
+html[data-theme="dark"] #leftPanel,
+html[data-theme="dark"] #rightPanel,
+html[data-theme="dark"] #bottomHint,
+html[data-theme="dark"] #scriptOverlay{
+  background:rgba(14,24,15,.88) !important;
   border-color:#2f4b31 !important;
   color:#eef7eb !important;
 }
@@ -1647,18 +1690,6 @@ function enableGamePageControls(){
  playHelp.textContent='';
  const canvas=renderer.domElement;
 
- // Prevent browser/player from using editor shortcuts in runtime.
- document.addEventListener('keydown',e=>{
-  if(!gamePageMode)return;
-  const allowed = ['KeyW','KeyA','KeyS','KeyD','Space','ShiftLeft','ShiftRight','Escape'];
-  if((e.ctrlKey||e.metaKey) || ['Delete','Backspace','KeyC','KeyV','KeyD'].includes(e.code)){
-   if(!allowed.includes(e.code)){
-    e.preventDefault();
-    e.stopPropagation();
-   }
-  }
- },true);
-
  const lockMouse=()=>{
   if(!gamePageMode)return;
   canvas.focus?.();
@@ -1676,23 +1707,32 @@ function enableGamePageControls(){
 
  document.addEventListener('mousemove',e=>{
   if(!gamePageMode || !pointerCameraEnabled || !playMode || physicsOnlyMode)return;
-  // Pointer-lock camera. Uses movementX/Y so camera feels like a normal game camera.
   player.yaw-=e.movementX*.003;
   player.pitch-=e.movementY*.00245;
   player.pitch=clamp(player.pitch,-1.15,.55);
  });
 
- // Avoid the editor right-mouse camera from fighting with the runtime camera.
  try{rightCamera=false;}catch(e){}
-
  setTimeout(()=>canvas.focus?.(),100);
+}
+
+
+function showRuntimeAccessScreen(message="This game opens from the Games page."){
+ document.body.innerHTML = `<main style="min-height:100vh;display:grid;place-items:center;background:#fff;color:#172819;font-family:Inter,system-ui,sans-serif;">
+  <section style="max-width:680px;padding:18px;border:1px solid #d6efcf;border-radius:18px;background:#fff;">
+   <h1 style="margin-top:0;color:#3f922e;">Oliom Horizons</h1>
+   <p>${message}</p>
+   <p style="color:#667868;font-size:13px;">Published games cannot be opened in Studio unless you are the owner.</p>
+   <a href="server.html" style="display:inline-flex;padding:8px 14px;border-radius:999px;background:#7ed957;color:#102011;text-decoration:none;font-weight:800;">Back to Games</a>
+  </section>
+ </main>`;
 }
 
 async function loadPublishedWorldFromUrl(){
  const params=new URLSearchParams(location.search);
  const editId=params.get("edit");
  const worldId=params.get("world") || editId;
- const launchedFromGamePage=params.get("fromGame")==="1";
+ const launchedFromGamePage=params.get("fromGame")==="1" || params.get("runtime")==="1";
  if(launchedFromGamePage){document.body.classList.add("game-page-mode");}
  if(!worldId)return;
  try{
@@ -1701,20 +1741,53 @@ async function loadPublishedWorldFromUrl(){
   const world=snap.data();
   loadedPublishedWorldOwnerId=world.ownerId||null;
   loadedPublishedWorldTitle=world.title||"OHS World";
+
+  const currentUser=await firebaseAuthReady();
+
+  // If someone opens a published game inside Studio directly, send them back to the game page.
+  if(!launchedFromGamePage && !editId && params.get("world")){
+   location.replace("game.html?world="+encodeURIComponent(worldId)+"&v=18");
+   return;
+  }
+
+  // Editing is allowed only for the owner of that game.
   if(editId){
+   if(!currentUser){
+    showRuntimeAccessScreen("Please log in to edit your own game.");
+    return;
+   }
+   if(world.ownerId !== currentUser.uid){
+    showRuntimeAccessScreen("You can only edit your own games.");
+    return;
+   }
    editingWorldId=editId;
    editingWorldOwnerId=world.ownerId||null;
   }
+
   ohsLoadWorldData(world.worldData);
   document.title=(world.title||"OHS World")+" — Oliom Horizons";
   const status=document.getElementById("firebaseStatus");
-  if(status)status.textContent=editId?("Editing: "+(world.title||"World")):"Loaded published game";
+  if(status)status.textContent=editId?("Editing: "+(world.title||"World")):"Loaded game";
+
   if(editId){
    publishBtn.textContent="Update";
-   toast("Editing published game");
+   toast("Editing your published game");
    return;
   }
-  if(params.get("play")==="1"){setTimeout(async()=>{try{startPlayerTest();if(launchedFromGamePage){enableGamePageControls();}await startMultiplayerSession(worldId);if(launchedFromGamePage){playOverlay.textContent='';playHelp.textContent='';}}catch(err){console.error(err);toast("Game load error: "+err.message)}},650);}
+
+  if(params.get("play")==="1"){
+   setTimeout(async()=>{
+    try{
+     startPlayerTest();
+     if(launchedFromGamePage){enableGamePageControls();}
+     await startMultiplayerSession(worldId);
+     if(launchedFromGamePage){playOverlay.textContent='';playHelp.textContent='';}
+    }catch(err){
+     console.error(err);
+     toast("Game load error: "+err.message);
+    }
+   },650);
+  }
  }catch(err){console.error("Load published world failed:",err);alert("Failed to load world: "+err.message);}
 }
 
@@ -2208,7 +2281,7 @@ function startPlayerTest(){
  camera.lookAt(player.position.x,player.position.y+.8,player.position.z);
 
  renderer.domElement.requestPointerLock?.();
- if(!gamePageMode)toast('Player spawned');
+ if(!gamePageMode)if(!gamePageMode)toast('Player spawned');
 }
 function stopTest(){
  stopMultiplayerSession();
