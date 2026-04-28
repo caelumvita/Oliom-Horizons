@@ -1,0 +1,61 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Oliom Horizons — Settings</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <a href="server.html" class="brand-mini">
+      <img src="https://res.cloudinary.com/duqlfltkd/image/upload/f_auto,q_auto/Logo_3_1_3_1_hrynwk" alt="Oliom Horizons logo" class="brand-logo" />
+      <div class="brand-title">Oliom Horizons<span>Settings</span></div>
+    </a>
+    <nav class="main-nav">
+      <a href="server.html" class="btn primary">Games</a>
+      <a href="studio.html" class="btn">Studio</a>
+      <a href="profile.html" class="btn">Profile</a>
+      <a href="messages.html" class="btn">Messages</a>
+      <a href="settings.html" class="btn">Settings</a>
+      <a href="rules.html" class="btn">Rules</a>
+    </nav>
+    <div class="auth-buttons" data-auth></div>
+  </header>
+
+  <main>
+    <section class="block" style="max-width:720px;">
+      <h1 style="margin-top:0;">Settings</h1>
+      <p>These settings are saved in this browser and apply across the site, Studio, and games.</p>
+
+      <div class="server-form" style="max-width:420px;">
+        <label>Theme
+          <select id="themeSelect">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+        <p id="themeMsg" class="tiny">Theme is saved automatically.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>© 2026 Oliom Horizons — Firebase</footer>
+
+  <script type="module">
+    import { renderHeaderAuth } from "./firebase-core.js";
+    await renderHeaderAuth();
+
+    const select = document.getElementById("themeSelect");
+    const msg = document.getElementById("themeMsg");
+    select.value = window.OHTheme?.get?.() || "light";
+
+    select.addEventListener("change", () => {
+      window.OHTheme?.set?.(select.value);
+      msg.textContent = select.value === "dark" ? "Dark theme enabled." : "Light theme enabled.";
+    });
+  </script>
+</body>
+</html>
