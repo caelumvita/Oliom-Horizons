@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,26 +8,23 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
   <header>
-    <a href="index.html" class="brand-mini">
+    <a href="server.html" class="brand-mini">
       <img src="https://res.cloudinary.com/duqlfltkd/image/upload/f_auto,q_auto/Logo_3_1_3_1_hrynwk" alt="Oliom Horizons logo" class="brand-logo" />
       <div class="brand-title">Oliom Horizons<span>Firebase</span></div>
     </a>
     <nav class="main-nav">
-      <a href="index.html" class="btn">Home</a>
+      <a href="server.html" class="btn primary">Games</a>
       <a href="studio.html" class="btn">Studio</a>
-      <a href="server.html" class="btn">Games</a>
+      <a href="profile.html" class="btn">Profile</a>
       <a href="rules.html" class="btn">Rules</a>
     </nav>
     <div class="auth-buttons" data-auth></div>
   </header>
-
   <main>
-
     <section class="block" style="max-width:560px;">
       <h1 style="margin-top:0;">Create account</h1>
-      <p>Green is the default avatar color. You can change it later on the home page.</p>
+      <p>Green is the default avatar color. You can change it later on the Profile page.</p>
       <div class="server-form">
         <label>Username<input id="username" type="text" maxlength="24" placeholder="Username" /></label>
         <label>Email<input id="email" type="email" maxlength="80" placeholder="you@example.com" /></label>
@@ -38,13 +36,12 @@
         <span id="msg" class="tiny"></span>
       </div>
     </section>
-
   </main>
-  <footer>© 2026 Oliom Horizons — Firebase · <a href="rules.html" style="color:white;text-decoration:underline;">Rules</a></footer>
+  <footer>© 2026 Oliom Horizons — Firebase</footer>
   <script type="module">
-
-import { $, auth, renderHeaderAuth, createUserWithEmailAndPassword, updateProfile, createProfileForUser } from "./firebase-core.js";
+import { $, auth, renderHeaderAuth, createUserWithEmailAndPassword, updateProfile, createProfileForUser, checkDeviceBanOrBlock } from "./firebase-core.js";
 await renderHeaderAuth();
+await checkDeviceBanOrBlock();
 async function doSignup() {
   const username = $("username").value.trim().slice(0, 24);
   const email = $("email").value.trim();
@@ -55,17 +52,14 @@ async function doSignup() {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(cred.user, { displayName: username });
     await createProfileForUser(cred.user, username);
-    location.href = "index.html";
+    location.href = "server.html";
   } catch (err) {
     console.error(err);
-    if (err.code === "auth/email-already-in-use") $("msg").textContent = "This email is already used.";
-    else if (err.code === "auth/weak-password") $("msg").textContent = "Password is too weak. Use at least 6 characters.";
-    else $("msg").textContent = "Sign up failed. Check your email and password.";
+    $("msg").textContent = "Sign up failed: " + err.message;
   }
 }
 $("signupSubmit").addEventListener("click", doSignup);
 $("password").addEventListener("keydown", e => { if (e.key === "Enter") doSignup(); });
-
   </script>
 </body>
 </html>
