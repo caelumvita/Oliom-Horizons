@@ -23,7 +23,7 @@
   <main>
     <section class="block">
       <h1 style="margin-top:0;">Games</h1>
-      <p>Published OHS worlds from Oliom Horizons Studio. Press Play to open the world in the OHS engine.</p>
+      <p>Published OHS worlds from Oliom Horizons Studio. Press Play to open the world in the dedicated game page.</p>
       <div class="server-actions-bar">
         <a class="btn primary" href="studio.html">Create in Studio</a>
         <button id="refreshWorldsBtn" class="btn">Refresh</button>
@@ -73,7 +73,7 @@ async function renderWorlds(){
             <div class="server-name">${escapeHtml(w.title || "Untitled OHS World")}</div>
             <div class="server-meta">by ${escapeHtml(w.ownerName || "Unknown")} · ${escapeHtml(w.engine || "OHS")}</div>
           </div>
-          <a class="btn primary" href="studio.html?world=${w.id}&play=1">Play</a>
+          <a class="btn primary" href="game.html?world=${w.id}">Play</a>
         </div>
         <div class="server-description">${escapeHtml(w.description || "No description.")}</div>
         <div class="server-badges">
