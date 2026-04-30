@@ -5,7 +5,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Oliom Horizons Studio — White Green UI</title>
-<script src="theme.js"></script>
 <style>
 
   :root{
@@ -372,35 +371,7 @@ body.game-page-mode canvas{
   cursor:none !important;
 }
 
-/* V17_THEME_DIALOGUE */
-#dialogueBox, #dialogueBox *{
-  color:#111 !important;
-}
-#dialogueBox{
-  background:rgba(255,255,255,.94) !important;
-}
-html[data-theme="dark"] body{
-  background:#0f170f;
-}
-html[data-theme="dark"] .glass,
-html[data-theme="dark"] #topbar,
-html[data-theme="dark"] #leftPanel,
-html[data-theme="dark"] #rightPanel,
-html[data-theme="dark"] #bottomHint,
-html[data-theme="dark"] #scriptOverlay{
-  background:rgba(14,24,15,.82) !important;
-  border-color:#2f4b31 !important;
-  color:#eef7eb !important;
-}
-html[data-theme="dark"] input,
-html[data-theme="dark"] textarea,
-html[data-theme="dark"] select{
-  background:#0f1a10 !important;
-  color:#eef7eb !important;
-  border-color:#2f4b31 !important;
-}
-
-/* V18_RUNTIME_LOCK */
+/* V19_STABLE_GAME_MODE */
 body.game-page-mode #topbar,
 body.game-page-mode #leftPanel,
 body.game-page-mode #rightPanel,
@@ -423,26 +394,6 @@ body.game-page-mode canvas{
 #dialogueBox{
   background:rgba(255,255,255,.94) !important;
 }
-html[data-theme="dark"] body{
-  background:#0f170f !important;
-}
-html[data-theme="dark"] .glass,
-html[data-theme="dark"] #topbar,
-html[data-theme="dark"] #leftPanel,
-html[data-theme="dark"] #rightPanel,
-html[data-theme="dark"] #bottomHint,
-html[data-theme="dark"] #scriptOverlay{
-  background:rgba(14,24,15,.88) !important;
-  border-color:#2f4b31 !important;
-  color:#eef7eb !important;
-}
-html[data-theme="dark"] input,
-html[data-theme="dark"] textarea,
-html[data-theme="dark"] select{
-  background:#0f1a10 !important;
-  color:#eef7eb !important;
-  border-color:#2f4b31 !important;
-}
 </style>
 </head>
 <body>
@@ -461,7 +412,6 @@ html[data-theme="dark"] select{
     <button id="loadBtn" class="secondary">Load</button>
     <button id="publishBtn">Publish</button>
     <button id="openGamesBtn" class="secondary">Games</button>
-    <button id="openSettingsBtn" class="secondary">Settings</button>
     <button id="clearBtn" class="danger">Clear</button>
   </div>
 </div>
@@ -586,7 +536,7 @@ html[data-theme="dark"] select{
 import * as THREE from 'https://unpkg.com/three@0.165.0/build/three.module.js';
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBbNRWbaSQfz8_5Wb0wqr7fpI2tuiybSNs",
@@ -612,8 +562,6 @@ let gamePageMode = false;
 let pointerCameraEnabled = false;
 let loadedPublishedWorldOwnerId = null;
 let loadedPublishedWorldTitle = '';
-let editingWorldId = null;
-let editingWorldOwnerId = null;
 
 function firebaseAuthReady(){return new Promise(resolve=>{const unsub=onAuthStateChanged(firebaseAuth,user=>{unsub();resolve(user);});});}
 function firebaseNormalize(name){return String(name||"").trim().toLowerCase().replace(/\s+/g,"_");}
@@ -782,11 +730,9 @@ function makeOtherPlayerGroup(data){
  glow.position.set(0,.08,.08);
  g.add(glow);
 
- // Face = transparent plane/tile on the front of the sphere, like the local player.
- // The canvas itself is transparent, so only the face lines are visible.
  const faceTex=createPlayerFaceCanvasTexture();
  const face=new THREE.Mesh(
-  new THREE.PlaneGeometry(1.16,1.16),
+  new THREE.PlaneGeometry(1.18,1.18),
   new THREE.MeshBasicMaterial({
    map:faceTex,
    transparent:true,
@@ -795,15 +741,14 @@ function makeOtherPlayerGroup(data){
    alphaTest:.02,
    side:THREE.DoubleSide,
    polygonOffset:true,
-   polygonOffsetFactor:-5,
-   polygonOffsetUnits:-5
+   polygonOffsetFactor:-6,
+   polygonOffsetUnits:-6
   })
  );
- face.position.set(0,.10,1.035);
- face.renderOrder=60;
+ face.position.set(0,.10,1.055);
+ face.renderOrder=80;
  g.add(face);
 
- // Name tag remains a sprite so it always faces the camera and looks clean.
  const nameTex=makeNameTagTexture(data.username||'Player');
  const tag=new THREE.Sprite(
   new THREE.SpriteMaterial({
@@ -816,7 +761,7 @@ function makeOtherPlayerGroup(data){
  );
  tag.scale.set(4.8,1.2,1);
  tag.position.set(0,2.55,0);
- tag.renderOrder=70;
+ tag.renderOrder=90;
  g.add(tag);
 
  g.userData.facePlane=face;
@@ -827,7 +772,6 @@ function makeOtherPlayerGroup(data){
  scene.add(g);
  return g;
 }
-
 function updateOtherPlayersFromSnapshot(snapshot){
  const seen = new Set();
  snapshot.forEach(docSnap=>{
@@ -972,7 +916,6 @@ const saveBtn=document.getElementById('saveBtn');
 const loadBtn=document.getElementById('loadBtn');
 const publishBtn=document.getElementById('publishBtn');
 const openGamesBtn=document.getElementById('openGamesBtn');
-const openSettingsBtn=document.getElementById('openSettingsBtn');
 const clearBtn=document.getElementById('clearBtn');
 const selectTool=document.getElementById('selectTool');
 const moveTool=document.getElementById('moveTool');
@@ -1065,7 +1008,7 @@ function createCharacterObjectMaterial(color=0x8fdcff){
 
 function triGeo(){const v=new Float32Array([-1,-1,-1,1,-1,-1,0,1,-1,-1,-1,1,1,-1,1,0,1,1]);const ind=[0,1,2,3,5,4,0,3,4,0,4,1,1,4,5,1,5,2,2,5,3,2,3,0];const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(v,3));g.setIndex(ind);g.computeVertexNormals();return g}
 function mat(type){if(type==='npc')return createCharacterObjectMaterial(0x8fdcff);if(type==='baseplate')return grassMat.clone();if(type==='checkpoint')return new THREE.MeshStandardMaterial({color:0x7dff96,emissive:0x1c7a35,emissiveIntensity:.35,transparent:true,opacity:.82,roughness:.38});if(type==='spawnpoint')return new THREE.MeshStandardMaterial({color:0x72a7ff,emissive:0x1d3f8f,emissiveIntensity:.45,transparent:true,opacity:.86,roughness:.36});return new THREE.MeshStandardMaterial({color:{cube:0x85e0ff,sphere:0x96ffbf,cylinder:0x9bb8ff,cone:0xffd166,triangle:0xff8fa3,baseplate:0x7fba60,checkpoint:0x7dff96,spawnpoint:0x72a7ff}[type]||0xffffff,roughness:.55,metalness:.05})}
-function geo(type){if(type==='baseplate')return new THREE.BoxGeometry(360,2,360);if(type==='checkpoint')return new THREE.CylinderGeometry(1.45,1.45,.32,36);if(type==='spawnpoint')return new THREE.CylinderGeometry(1.1,1.1,.25,36);if(type==='cube')return new THREE.BoxGeometry(2,2,2);if(type==='sphere'||type==='npc')return new THREE.SphereGeometry(1,36,24);if(type==='cylinder')return new THREE.CylinderGeometry(1,1,2,36);if(type==='cone')return new THREE.ConeGeometry(1.1,2.2,32);if(type==='triangle')return triGeo();return new THREE.BoxGeometry(2,2,2)}
+function geo(type){if(type==='baseplate')return new THREE.BoxGeometry(180,2,180);if(type==='checkpoint')return new THREE.CylinderGeometry(1.45,1.45,.32,36);if(type==='spawnpoint')return new THREE.CylinderGeometry(1.1,1.1,.25,36);if(type==='cube')return new THREE.BoxGeometry(2,2,2);if(type==='sphere'||type==='npc')return new THREE.SphereGeometry(1,36,24);if(type==='cylinder')return new THREE.CylinderGeometry(1,1,2,36);if(type==='cone')return new THREE.ConeGeometry(1.1,2.2,32);if(type==='triangle')return triGeo();return new THREE.BoxGeometry(2,2,2)}
 function setGround(o){o.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(o);o.position.y+=-b.min.y}
 function serializeObj(o){return{type:o.userData.type,name:o.userData.name,anchored:o.userData.anchored,canCollide:o.userData.canCollide!==false,color:o.userData.color||'#ffffff',opacity:o.userData.opacity??1,dialogue:o.userData.dialogue||'',responses:o.userData.responses||[],groupId:o.userData.groupId||'',groupName:o.userData.groupName||'',pos:o.position.toArray(),rot:[o.rotation.x,o.rotation.y,o.rotation.z],scale:o.scale.toArray()}}
 
@@ -1597,7 +1540,7 @@ function bind(id,axis){document.getElementById(id).addEventListener('change',e=>
 bind('xInput','x');bind('yInput','y');bind('zInput','z');
 document.querySelectorAll('[data-nudge]').forEach(b=>b.addEventListener('click',()=>{if(!selected)return;const [x,y,z]=b.dataset.nudge.split(',').map(Number);const step=Math.max(.01,parseFloat(snapStepInput.value)||1);getSelection().forEach(o=>{o.position.x=snap(o.position.x+x*step);o.position.y=snap(o.position.y+y*step);o.position.z=snap(o.position.z+z*step);o.userData.velocity.set(0,0,0)});refreshProps();updateBox();updateGizmo()}));
 rulerInput.addEventListener('change',e=>grid.visible=e.target.checked);
-undoBtn.addEventListener('click',undo);redoBtn.addEventListener('click',redo);saveBtn.addEventListener('click',saveScene);loadBtn.addEventListener('click',loadScene);publishBtn.addEventListener('click',publishOhsWorld);openGamesBtn.addEventListener('click',()=>location.href='server.html');openSettingsBtn.addEventListener('click',()=>location.href='settings.html');
+undoBtn.addEventListener('click',undo);redoBtn.addEventListener('click',redo);saveBtn.addEventListener('click',saveScene);loadBtn.addEventListener('click',loadScene);publishBtn.addEventListener('click',publishOhsWorld);openGamesBtn.addEventListener('click',()=>location.href='server.html');
 
 function saveScene(){syncActiveScript();localStorage.setItem('oliomStudioScene',JSON.stringify(objects.map(serializeObj)));saveOhsScripts();toast('Scene saved')}
 function loadScene(){const raw=localStorage.getItem('oliomStudioScene');if(!raw){toast('No saved scene');return}for(const o of [...objects]){scene.remove(o);clearObject3D(o);o.geometry?.dispose?.();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose?.());else o.material.dispose?.();}}objects.length=0;JSON.parse(raw).forEach(d=>makeObj(d));loadOhsScripts();selectObject(null);refreshExplorer();pushHistory();toast('Scene loaded')}
@@ -1632,55 +1575,27 @@ async function publishOhsWorld(){
  const authPack=await firebaseRequirePublishUser();
  if(!authPack)return;
  const {user,profile}=authPack;
-
- if(editingWorldId && editingWorldOwnerId && editingWorldOwnerId!==user.uid){
-  alert("You can only edit your own games.");
-  return;
- }
-
- const defaultTitle=loadedPublishedWorldTitle || localStorage.getItem("oliomLastWorldTitle") || "My OHS World";
- const title=prompt(editingWorldId?"Update world title:":"World title:", defaultTitle);
+ const title=prompt("World title:",localStorage.getItem("oliomLastWorldTitle")||"My OHS World");
  if(!title)return;
  localStorage.setItem("oliomLastWorldTitle",title);
  const description=prompt("World description:","Created in Oliom Horizons Studio with OHS scripts.")||"";
- publishBtn.disabled=true; publishBtn.textContent=editingWorldId?"Updating...":"Publishing..."; if(status)status.textContent=editingWorldId?"Updating Firebase...":"Publishing to Firebase...";
+ publishBtn.disabled=true; publishBtn.textContent="Publishing..."; if(status)status.textContent="Publishing to Firebase...";
  try{
-  const payload={
+  const ref=await addDoc(collection(firebaseDb,"worlds"),{
    title:title.trim().slice(0,64)||"Untitled OHS World",
    titleLower:(title.trim().slice(0,64)||"Untitled OHS World").toLowerCase(),
    description:description.trim().slice(0,280),
-   ownerId:user.uid,
-   ownerName:profile?.username||user.email||"Player",
-   ownerAvatar:profile?.avatar||"",
-   ownerAvatarColor:profile?.avatarColor||"green",
-   visibility:"public",
-   maxPlayers:8,
-   playerCount:0,
-   status:"published",
-   engine:"OHS",
-   worldData:ohsGetWorldData(),
-   updatedAt:serverTimestamp()
-  };
-
-  if(editingWorldId){
-   await updateDoc(doc(firebaseDb,"worlds",editingWorldId),payload);
-   toast("Game updated");
-   if(status)status.textContent="Updated · Games";
-   if(confirm("Updated! Open Games page now?")) location.href="server.html?updated="+encodeURIComponent(editingWorldId);
-  }else{
-   const ref=await addDoc(collection(firebaseDb,"worlds"),{...payload,createdAt:serverTimestamp()});
-   editingWorldId=ref.id; editingWorldOwnerId=user.uid; loadedPublishedWorldTitle=payload.title;
-   toast("Published to Games");
-   if(status)status.textContent="Published · Games";
-   if(confirm("Published! Open Games page now?")) location.href="server.html?published="+encodeURIComponent(ref.id);
-  }
+   ownerId:user.uid, ownerName:profile?.username||user.email||"Player", ownerAvatar:profile?.avatar||"", ownerAvatarColor:profile?.avatarColor||"green",
+   visibility:"public", maxPlayers:8, playerCount:0, status:"published", engine:"OHS",
+   worldData:ohsGetWorldData(), createdAt:serverTimestamp(), updatedAt:serverTimestamp()
+  });
+  toast("Published to Games"); if(status)status.textContent="Published · Games";
+  if(confirm("Published! Open Games page now?")) location.href="server.html?published="+encodeURIComponent(ref.id);
  }catch(err){
   console.error("OHS publish failed:",err);
   if(status)status.textContent="Publish failed";
-  alert("Publish failed: "+err.message+"
-
-Open Firebase > Firestore Database > Rules and paste firestore-rules.txt.");
- }finally{ publishBtn.disabled=false; publishBtn.textContent=editingWorldId?"Update":"Publish"; }
+  alert("Publish failed: "+err.message+"\n\nOpen Firebase > Firestore Database > Rules and paste firestore-rules.txt from the newest ZIP.");
+ }finally{ publishBtn.disabled=false; publishBtn.textContent="Publish"; }
 }
 window.OH_publishWorld = publishOhsWorld;
 
@@ -1690,6 +1605,18 @@ function enableGamePageControls(){
  playOverlay.textContent='';
  playHelp.textContent='';
  const canvas=renderer.domElement;
+
+ // Prevent browser/player from using editor shortcuts in runtime.
+ document.addEventListener('keydown',e=>{
+  if(!gamePageMode)return;
+  const allowed = ['KeyW','KeyA','KeyS','KeyD','Space','ShiftLeft','ShiftRight','Escape'];
+  if((e.ctrlKey||e.metaKey) || ['Delete','Backspace','KeyC','KeyV','KeyD'].includes(e.code)){
+   if(!allowed.includes(e.code)){
+    e.preventDefault();
+    e.stopPropagation();
+   }
+  }
+ },true);
 
  const lockMouse=()=>{
   if(!gamePageMode)return;
@@ -1708,32 +1635,22 @@ function enableGamePageControls(){
 
  document.addEventListener('mousemove',e=>{
   if(!gamePageMode || !pointerCameraEnabled || !playMode || physicsOnlyMode)return;
+  // Pointer-lock camera. Uses movementX/Y so camera feels like a normal game camera.
   player.yaw-=e.movementX*.003;
   player.pitch-=e.movementY*.00245;
   player.pitch=clamp(player.pitch,-1.15,.55);
  });
 
+ // Avoid the editor right-mouse camera from fighting with the runtime camera.
  try{rightCamera=false;}catch(e){}
+
  setTimeout(()=>canvas.focus?.(),100);
-}
-
-
-function showRuntimeAccessScreen(message="This game opens from the Games page."){
- document.body.innerHTML = `<main style="min-height:100vh;display:grid;place-items:center;background:#fff;color:#172819;font-family:Inter,system-ui,sans-serif;">
-  <section style="max-width:680px;padding:18px;border:1px solid #d6efcf;border-radius:18px;background:#fff;">
-   <h1 style="margin-top:0;color:#3f922e;">Oliom Horizons</h1>
-   <p>${message}</p>
-   <p style="color:#667868;font-size:13px;">Published games cannot be opened in Studio unless you are the owner.</p>
-   <a href="server.html" style="display:inline-flex;padding:8px 14px;border-radius:999px;background:#7ed957;color:#102011;text-decoration:none;font-weight:800;">Back to Games</a>
-  </section>
- </main>`;
 }
 
 async function loadPublishedWorldFromUrl(){
  const params=new URLSearchParams(location.search);
- const editId=params.get("edit");
- const worldId=params.get("world") || editId;
- const launchedFromGamePage=params.get("fromGame")==="1" || params.get("runtime")==="1";
+ const worldId=params.get("world");
+ const launchedFromGamePage=params.get("fromGame")==="1";
  if(launchedFromGamePage){document.body.classList.add("game-page-mode");}
  if(!worldId)return;
  try{
@@ -1742,53 +1659,10 @@ async function loadPublishedWorldFromUrl(){
   const world=snap.data();
   loadedPublishedWorldOwnerId=world.ownerId||null;
   loadedPublishedWorldTitle=world.title||"OHS World";
-
-  const currentUser=await firebaseAuthReady();
-
-  // If someone opens a published game inside Studio directly, send them back to the game page.
-  if(!launchedFromGamePage && !editId && params.get("world")){
-   location.replace("game.html?world="+encodeURIComponent(worldId)+"&v=18");
-   return;
-  }
-
-  // Editing is allowed only for the owner of that game.
-  if(editId){
-   if(!currentUser){
-    showRuntimeAccessScreen("Please log in to edit your own game.");
-    return;
-   }
-   if(world.ownerId !== currentUser.uid){
-    showRuntimeAccessScreen("You can only edit your own games.");
-    return;
-   }
-   editingWorldId=editId;
-   editingWorldOwnerId=world.ownerId||null;
-  }
-
   ohsLoadWorldData(world.worldData);
   document.title=(world.title||"OHS World")+" — Oliom Horizons";
-  const status=document.getElementById("firebaseStatus");
-  if(status)status.textContent=editId?("Editing: "+(world.title||"World")):"Loaded game";
-
-  if(editId){
-   publishBtn.textContent="Update";
-   toast("Editing your published game");
-   return;
-  }
-
-  if(params.get("play")==="1"){
-   setTimeout(async()=>{
-    try{
-     startPlayerTest();
-     if(launchedFromGamePage){enableGamePageControls();}
-     await startMultiplayerSession(worldId);
-     if(launchedFromGamePage){playOverlay.textContent='';playHelp.textContent='';}
-    }catch(err){
-     console.error(err);
-     toast("Game load error: "+err.message);
-    }
-   },650);
-  }
+  const status=document.getElementById("firebaseStatus"); if(status)status.textContent="Loaded published game";
+  if(params.get("play")==="1"){setTimeout(async()=>{try{startPlayerTest();if(launchedFromGamePage){enableGamePageControls();}await startMultiplayerSession(worldId);if(launchedFromGamePage){playOverlay.textContent='';playHelp.textContent='';}}catch(err){console.error(err);toast("Game load error: "+err.message)}},650);}
  }catch(err){console.error("Load published world failed:",err);alert("Failed to load world: "+err.message);}
 }
 
@@ -2282,7 +2156,7 @@ function startPlayerTest(){
  camera.lookAt(player.position.x,player.position.y+.8,player.position.z);
 
  renderer.domElement.requestPointerLock?.();
- if(!gamePageMode)if(!gamePageMode)toast('Player spawned');
+ if(!gamePageMode)toast('Player spawned');
 }
 function stopTest(){
  stopMultiplayerSession();
