@@ -371,7 +371,7 @@ body.game-page-mode canvas{
   cursor:none !important;
 }
 
-/* V21_MOBILE_CONTROLS */
+/* V22_SAFE_MOBILE_CONTROLS */
 #mobileControls{
   display:none;
   position:fixed;
@@ -424,8 +424,12 @@ body.game-page-mode canvas{
 body.game-page-mode.mobile-runtime #mobileControls{
   display:block;
 }
-body.mobile-editor-blocked{
-  background:#fff!important;
+#dialogueBox,
+#dialogueBox *{
+  color:#111 !important;
+}
+#dialogueBox{
+  background:rgba(255,255,255,.94) !important;
 }
 @media(max-width:760px), (pointer:coarse){
   body.game-page-mode #topbar,
@@ -553,6 +557,13 @@ body.mobile-editor-blocked{
   <div id="dialogueName" style="font-weight:800;margin-bottom:5px;">NPC</div>
   <div id="dialogueText" style="color:rgba(245,251,255,.9);"></div>
   <div id="dialogueResponses" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"></div>
+</div>
+
+<div id="mobileControls" aria-hidden="true">
+  <div id="mobileStick">
+    <div id="mobileStickKnob"></div>
+  </div>
+  <button id="mobileJumpBtn" type="button">Jump</button>
 </div>
 
 <div id="scriptOverlay" class="glass" style="display:none;position:fixed;inset:12px;z-index:20;border-radius:20px;padding:0;overflow:hidden;">
@@ -825,6 +836,27 @@ function makeOtherPlayerGroup(data){
  return g;
 }
 
+function playerPresenceIsStale(data){
+ const ms=data?.updatedAt?.toMillis?.();
+ if(!ms)return false;
+ return Date.now()-ms>12000;
+}
+function removeOtherPlayerVisual(id){
+ const g=otherPlayers.get(id);
+ if(g){
+  scene.remove(g);
+  otherPlayers.delete(id);
+ }
+}
+function cleanupStaleOtherPlayers(){
+ const now=Date.now();
+ for(const [id,g] of [...otherPlayers.entries()]){
+  if(g.userData.lastSeenMs && now-g.userData.lastSeenMs>14000){
+   removeOtherPlayerVisual(id);
+  }
+ }
+}
+
 function updateOtherPlayersFromSnapshot(snapshot){
  const seen = new Set();
  snapshot.forEach(docSnap=>{
@@ -984,30 +1016,6 @@ const leftPanel=document.getElementById('leftPanel');
 const rightPanel=document.getElementById('rightPanel');
 const playHelp=document.getElementById('playHelp');
 const bottomHint=document.getElementById('bottomHint');
-
-function isLikelyMobile(){
- return matchMedia('(pointer:coarse)').matches || innerWidth < 760 || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-}
-function blockMobileStudioIfNeeded(){
- const params=new URLSearchParams(location.search);
- const isRuntime=params.get('fromGame')==='1' || params.get('play')==='1';
- if(isLikelyMobile() && !isRuntime){
-  document.body.className='mobile-editor-blocked';
-  document.body.innerHTML=`<main style="min-height:100vh;display:grid;place-items:center;padding:18px;font-family:Inter,system-ui,sans-serif;background:#fff;color:#172819;">
-   <section style="max-width:560px;border:1px solid #d6efcf;border-radius:18px;padding:18px;background:#fff;text-align:center;">
-    <h1 style="margin-top:0;color:#3f922e;">Studio is desktop only</h1>
-    <p style="color:#667868;line-height:1.55;">Oliom Horizons Studio needs a keyboard and mouse. You can still play games on mobile.</p>
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px;">
-     <a href="server.html" style="display:inline-flex;padding:9px 14px;border-radius:999px;background:#7ed957;color:#173019;text-decoration:none;font-weight:900;">Open Games</a>
-     <a href="profile.html" style="display:inline-flex;padding:9px 14px;border-radius:999px;border:1px solid #d6efcf;color:#3f922e;text-decoration:none;font-weight:900;">Profile</a>
-    </div>
-   </section>
-  </main>`;
-  throw new Error('Studio desktop only on mobile.');
- }
-}
-blockMobileStudioIfNeeded();
-
 const physicsTestBtn=document.getElementById('physicsTestBtn');
 const playerTestBtn=document.getElementById('playerTestBtn');
 const openScriptsBtn=document.getElementById('openScriptsBtn');
@@ -1704,6 +1712,9 @@ async function publishOhsWorld(){
 window.OH_publishWorld = publishOhsWorld;
 
 
+function isLikelyMobile(){
+ return matchMedia('(pointer:coarse)').matches || innerWidth < 760 || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
 function initMobileRuntimeControls(){
  if(!isLikelyMobile())return;
  document.body.classList.add('mobile-runtime');
@@ -1756,8 +1767,7 @@ function initMobileRuntimeControls(){
   canvas.dataset.mobileLookReady='1';
   canvas.addEventListener('pointerdown',e=>{
    if(!gamePageMode || !isLikelyMobile())return;
-   const target=e.target;
-   if(target.closest?.('#mobileControls'))return;
+   if(e.target.closest?.('#mobileControls'))return;
    if(e.clientX < innerWidth*.36)return;
    mobileLookPointerId=e.pointerId;
    mobileLookLastX=e.clientX;
