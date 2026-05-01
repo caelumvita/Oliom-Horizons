@@ -198,77 +198,7 @@
       color:var(--muted);
     }
 
-  
-/* V22_MOBILE_GAME_CHAT */
-@media(max-width:760px), (pointer:coarse){
-  body{
-    height:100dvh;
-  }
-  header{
-    min-height:48px;
-    padding:6px 8px;
-    flex-wrap:nowrap;
-  }
-  .brand span{
-    font-size:13px;
-  }
-  .brand img{
-    width:30px;
-    height:30px;
-    border-radius:10px;
-  }
-  .actions{
-    gap:5px;
-  }
-  .btn{
-    min-height:30px;
-    padding:5px 9px;
-    font-size:12px;
-  }
-  #chatPanel{
-    top:58px;
-    left:10px;
-    bottom:auto;
-    width:min(360px,calc(100vw - 20px));
-    max-height:210px;
-    padding:8px;
-    border-radius:15px;
-  }
-  #chatPanel.collapsed{
-    width:auto;
-    max-width:190px;
-    padding:7px 9px;
-  }
-  #chatMessages{
-    height:92px;
-    font-size:12px;
-  }
-  .chatMsg{
-    font-size:12px;
-  }
-  #chatForm{
-    gap:5px;
-  }
-  #chatInput{
-    padding:7px 9px;
-    font-size:12px;
-  }
-  #chatSend{
-    padding:7px 10px;
-    font-size:12px;
-  }
-  #chatStatus{
-    display:none;
-  }
-  #status{
-    padding:14px;
-  }
-  .card{
-    border-radius:16px;
-    padding:14px;
-  }
-}
-</style>
+  </style>
 </head>
 <body>
   <header>
@@ -294,7 +224,7 @@
 
   <section id="chatPanel">
     <div id="chatHeader">
-      <span>World Chat</span>
+      <span>Game Chat</span>
       <button id="chatToggle" type="button">Hide</button>
     </div>
     <div id="chatMessages">
@@ -304,7 +234,7 @@
       <input id="chatInput" maxlength="160" autocomplete="off" placeholder="Type message..." />
       <button id="chatSend" type="submit">Send</button>
     </form>
-    <div id="chatStatus">Sign in to chat.</div>
+    <div id="chatStatus">Temporary per-game chat.</div>
   </section>
 
 
@@ -323,7 +253,7 @@
         return;
       }
 
-      const src = "studio.html?world=" + encodeURIComponent(worldId) + "&play=1&fromGame=1&v=22";
+      const src = "studio.html?world=" + encodeURIComponent(worldId) + "&play=1&fromGame=1&v=23";
       statusBox.style.display = "grid";
       frame.style.display = "none";
       frame.src = src;
@@ -356,6 +286,9 @@
       escapeHtml,
       collection,
       addDoc,
+      getDocs,
+      deleteDoc,
+      doc,
       query,
       orderBy,
       limit,
@@ -385,6 +318,24 @@
       chatMessages.scrollTop = chatMessages.scrollHeight + 1000;
     }
 
+
+    async function cleanupOldChat(){
+      if(!chatWorldId || !chatUser) return;
+      try{
+        const oldQ = query(collection(db, "worlds", chatWorldId, "liveChat"), orderBy("createdAt", "asc"), limit(120));
+        const snap = await getDocs(oldQ);
+        const cutoff = Date.now() - 20 * 60 * 1000;
+        snap.forEach(d => {
+          const ms = d.data().createdAt?.toMillis?.() || Date.now();
+          if(ms < cutoff){
+            deleteDoc(doc(db, "worlds", chatWorldId, "liveChat", d.id)).catch(()=>{});
+          }
+        });
+      }catch(err){
+        console.warn("Old chat cleanup failed:", err);
+      }
+    }
+
     async function initChat(){
       if(!chatWorldId){
         chatStatus.textContent = "Open a game from Games to use chat.";
@@ -394,16 +345,17 @@
 
       chatUser = await authReady();
       if(!chatUser){
-        chatStatus.textContent = "Log in to chat. You can still read messages.";
+        chatStatus.textContent = "Log in to send messages. You can still read recent messages.";
         chatInput.disabled = true;
       }else{
         chatProfile = await ensureProfile(chatUser);
         chatStatus.textContent = `Chatting as ${chatProfile.username || "Player"}`;
         chatInput.disabled = false;
+        cleanupOldChat();
       }
 
-      const chatRef = collection(db, "worlds", chatWorldId, "chat");
-      const q = query(chatRef, orderBy("createdAt", "asc"), limit(60));
+      const chatRef = collection(db, "worlds", chatWorldId, "liveChat");
+      const q = query(chatRef, orderBy("createdAt", "asc"), limit(40));
 
       onSnapshot(q, snap => {
         const rows = [];
@@ -425,12 +377,13 @@
       if(!text) return;
       chatInput.value = "";
       try{
-        await addDoc(collection(db, "worlds", chatWorldId, "chat"), {
+        await addDoc(collection(db, "worlds", chatWorldId, "liveChat"), {
           authorId: chatUser.uid,
           authorName: chatProfile.username || "Player",
           text,
           createdAt: serverTimestamp()
         });
+        cleanupOldChat();
       }catch(err){
         console.error("Send chat failed:", err);
         chatStatus.textContent = "Chat send failed: " + err.message;
@@ -445,12 +398,6 @@
       chatPanel.classList.toggle("collapsed");
       chatToggle.textContent = chatPanel.classList.contains("collapsed") ? "Show" : "Hide";
     });
-
-    // V22 mobile chat init
-    if(matchMedia("(max-width:760px), (pointer:coarse)").matches){
-      chatPanel.classList.add("collapsed");
-      chatToggle.textContent = "Chat";
-    }
 
     await initChat();
   </script>
