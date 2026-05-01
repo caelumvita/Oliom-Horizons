@@ -40,11 +40,29 @@
   </main>
   <footer>© 2026 Oliom Horizons — Firebase</footer>
   <script type="module">
-import { db, renderHeaderAuth, escapeHtml, collection, getDocs } from "./firebase-core.js";
+import {
+  db,
+  renderHeaderAuth,
+  escapeHtml,
+  authReady,
+  ensureProfile,
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+  onSnapshot,
+  addDoc,
+  serverTimestamp
+} from "./firebase-core.js";
+
 await renderHeaderAuth();
 
 const worldList = document.getElementById("worldList");
 const statusLine = document.getElementById("serverStatusLine");
+const currentUser = await authReady();
+const currentProfile = currentUser ? await ensureProfile(currentUser) : null;
+const commentUnsubs = [];
 
 function sortWorlds(worlds){
   return worlds.sort((a,b)=>{
@@ -54,7 +72,57 @@ function sortWorlds(worlds){
   });
 }
 
+function commentsBoxId(worldId){
+  return "comments_" + worldId.replace(/[^a-zA-Z0-9_-]/g, "");
+}
+function commentInputId(worldId){
+  return "commentInput_" + worldId.replace(/[^a-zA-Z0-9_-]/g, "");
+}
+
+function renderGameComments(worldId){
+  const box = document.getElementById(commentsBoxId(worldId));
+  if(!box) return;
+
+  const q = query(collection(db, "worlds", worldId, "comments"), orderBy("createdAt", "desc"), limit(5));
+  const unsub = onSnapshot(q, snap => {
+    const rows = [];
+    snap.forEach(d => rows.push({id:d.id, ...d.data()}));
+
+    box.innerHTML = rows.length ? rows.map(c => `
+      <div class="comment">
+        <div class="comment-author">${escapeHtml(c.authorName || "Player")}</div>
+        <div class="comment-text">${escapeHtml(c.text || "")}</div>
+      </div>
+    `).join("") : '<p class="comment-empty">No comments yet.</p>';
+  }, err => {
+    box.innerHTML = `<p class="comment-empty">Comments failed: ${escapeHtml(err.message)}</p>`;
+  });
+
+  commentUnsubs.push(unsub);
+}
+
+async function postGameComment(worldId){
+  if(!currentUser || !currentProfile){
+    alert("Log in to comment.");
+    return;
+  }
+
+  const input = document.getElementById(commentInputId(worldId));
+  const text = input.value.trim().slice(0,300);
+  if(!text) return;
+
+  input.value = "";
+  await addDoc(collection(db, "worlds", worldId, "comments"), {
+    authorId: currentUser.uid,
+    authorName: currentProfile.username || "Player",
+    text,
+    createdAt: serverTimestamp()
+  });
+}
+
 async function renderWorlds(){
+  commentUnsubs.splice(0).forEach(unsub => unsub());
+
   worldList.innerHTML = '<div class="server-empty">Loading games...</div>';
   statusLine.textContent = "Loading games...";
   try{
@@ -67,6 +135,7 @@ async function renderWorlds(){
       worldList.innerHTML = '<div class="server-empty">No published games yet. Open Studio, build something, then press Publish.</div>';
       return;
     }
+
     worldList.innerHTML = worlds.map(w=>`
       <div class="server-card">
         <div class="server-top">
@@ -74,7 +143,7 @@ async function renderWorlds(){
             <div class="server-name">${escapeHtml(w.title || "Untitled OHS World")}</div>
             <div class="server-meta">by ${escapeHtml(w.ownerName || "Unknown")} · ${escapeHtml(w.engine || "OHS")}</div>
           </div>
-          <a class="btn primary" href="game.html?world=${w.id}">Play</a>
+          <a class="btn primary" href="game.html?world=${w.id}&v=23">Play</a>
         </div>
         <div class="server-description">${escapeHtml(w.description || "No description.")}</div>
         <div class="server-badges">
@@ -82,8 +151,22 @@ async function renderWorlds(){
           <span class="badge">${escapeHtml(w.status || "published")}</span>
           <span class="badge">OHS world</span>
         </div>
+
+        <div class="game-comments" style="margin-top:12px;">
+          <strong style="color:var(--green-2);">Comments</strong>
+          <div id="${commentsBoxId(w.id)}" style="margin-top:8px;"><p class="comment-empty">Loading comments...</p></div>
+          <div class="row-actions" style="margin-top:8px;">
+            <input id="${commentInputId(w.id)}" maxlength="300" placeholder="${currentUser ? "Write a comment..." : "Log in to comment"}" ${currentUser ? "" : "disabled"}>
+            <button class="btn" data-post-comment="${w.id}" ${currentUser ? "" : "disabled"}>Post</button>
+          </div>
+        </div>
       </div>
     `).join("");
+
+    worlds.forEach(w => renderGameComments(w.id));
+    [...worldList.querySelectorAll("[data-post-comment]")].forEach(btn => {
+      btn.addEventListener("click", () => postGameComment(btn.dataset.postComment));
+    });
   }catch(err){
     console.error("Could not load games:",err);
     statusLine.textContent = "Failed to load games.";
