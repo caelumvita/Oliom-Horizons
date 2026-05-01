@@ -1,0 +1,39 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Oliom Horizons — Firebase Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <section class="block" style="max-width:720px;">
+      <h1 style="margin-top:0;">Firebase Account Test</h1>
+      <p>This page checks whether Firebase modules, Auth, and Firestore profile loading work.</p>
+      <pre id="out" style="white-space:pre-wrap;border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;"></pre>
+      <div class="row-actions">
+        <a class="btn" href="login.html?v=24">Log in</a>
+        <a class="btn primary" href="signin.html?v=24">Sign up</a>
+        <a class="btn" href="server.html?v=24">Games</a>
+      </div>
+    </section>
+  </main>
+  <script type="module">
+    import { authReady, auth, db } from "./firebase-core.js";
+    const out = document.getElementById("out");
+    try{
+      out.textContent += "Firebase module loaded.\n";
+      out.textContent += "Auth object: " + Boolean(auth) + "\n";
+      out.textContent += "Firestore object: " + Boolean(db) + "\n";
+      const user = await authReady();
+      out.textContent += "Current user: " + (user ? user.email : "not signed in") + "\n";
+      out.textContent += "OK.";
+    }catch(err){
+      console.error(err);
+      out.textContent += "ERROR: " + err.message + "\n";
+    }
+  </script>
+</body>
+</html>
