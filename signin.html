@@ -39,9 +39,8 @@
   </main>
   <footer>© 2026 Oliom Horizons — Firebase</footer>
   <script type="module">
-import { $, auth, renderHeaderAuth, createUserWithEmailAndPassword, updateProfile, createProfileForUser, checkDeviceBanOrBlock } from "./firebase-core.js";
+import { $, auth, renderHeaderAuth, createUserWithEmailAndPassword, updateProfile, createProfileForUser } from "./firebase-core.js";
 await renderHeaderAuth();
-await checkDeviceBanOrBlock();
 async function doSignup() {
   const username = $("username").value.trim().slice(0, 24);
   const email = $("email").value.trim();
