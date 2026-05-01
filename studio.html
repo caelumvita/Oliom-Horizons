@@ -370,78 +370,6 @@ body.game-page-mode #game{
 body.game-page-mode canvas{
   cursor:none !important;
 }
-
-/* V22_SAFE_MOBILE_CONTROLS */
-#mobileControls{
-  display:none;
-  position:fixed;
-  inset:auto 0 0 0;
-  z-index:5000;
-  pointer-events:none;
-  padding:0 18px 18px;
-}
-#mobileStick{
-  position:absolute;
-  left:22px;
-  bottom:24px;
-  width:118px;
-  height:118px;
-  border-radius:50%;
-  border:2px solid rgba(214,239,207,.78);
-  background:rgba(255,255,255,.18);
-  backdrop-filter:blur(8px);
-  box-shadow:0 8px 24px rgba(0,0,0,.12);
-  pointer-events:auto;
-  touch-action:none;
-}
-#mobileStickKnob{
-  position:absolute;
-  left:50%;
-  top:50%;
-  width:52px;
-  height:52px;
-  border-radius:50%;
-  background:rgba(126,217,87,.82);
-  border:2px solid rgba(255,255,255,.86);
-  transform:translate(-50%,-50%);
-  box-shadow:0 6px 18px rgba(0,0,0,.16);
-}
-#mobileJumpBtn{
-  position:absolute;
-  right:24px;
-  bottom:34px;
-  width:86px;
-  height:86px;
-  border-radius:50%;
-  border:2px solid rgba(255,255,255,.9);
-  background:rgba(126,217,87,.86);
-  color:#173019;
-  font-weight:900;
-  box-shadow:0 8px 24px rgba(0,0,0,.16);
-  pointer-events:auto;
-  touch-action:none;
-}
-body.game-page-mode.mobile-runtime #mobileControls{
-  display:block;
-}
-#dialogueBox,
-#dialogueBox *{
-  color:#111 !important;
-}
-#dialogueBox{
-  background:rgba(255,255,255,.94) !important;
-}
-@media(max-width:760px), (pointer:coarse){
-  body.game-page-mode #topbar,
-  body.game-page-mode #leftPanel,
-  body.game-page-mode #rightPanel,
-  body.game-page-mode #bottomHint,
-  body.game-page-mode #scriptOverlay,
-  body.game-page-mode #playHelp,
-  body.game-page-mode #playOverlay{
-    display:none!important;
-  }
-}
 </style>
 </head>
 <body>
@@ -559,13 +487,6 @@ body.game-page-mode.mobile-runtime #mobileControls{
   <div id="dialogueResponses" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"></div>
 </div>
 
-<div id="mobileControls" aria-hidden="true">
-  <div id="mobileStick">
-    <div id="mobileStickKnob"></div>
-  </div>
-  <button id="mobileJumpBtn" type="button">Jump</button>
-</div>
-
 <div id="scriptOverlay" class="glass" style="display:none;position:fixed;inset:12px;z-index:20;border-radius:20px;padding:0;overflow:hidden;">
   <div style="height:58px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-bottom:1px solid var(--oh-line);background:rgba(255,255,255,.62);">
     <div style="display:flex;flex-direction:column;line-height:1.05;">
@@ -679,6 +600,7 @@ function setLocalPlayerColor(color){
 }
 function createPlayerFaceCanvasTexture(){
  // Static version of the normal/local player face.
+ // Same transparent texture style, just without blinking.
  const canvas=document.createElement('canvas');
  canvas.width=1024;
  canvas.height=1024;
@@ -691,9 +613,9 @@ function createPlayerFaceCanvasTexture(){
  ctx.lineWidth=42;
 
  function caretEye(cx,cy,scale,flip=1){
+  const halfW=scale*.28;
   const openLift=scale*.34;
   const sideDrop=scale*.20;
-  const halfW=scale*.28;
   ctx.beginPath();
   ctx.moveTo(cx-halfW,cy+sideDrop*.7);
   ctx.lineTo(cx-scale*.03*flip,cy-openLift);
@@ -705,8 +627,8 @@ function createPlayerFaceCanvasTexture(){
  caretEye(685,340,190,-1);
 
  ctx.beginPath();
- ctx.moveTo(255,640);
- ctx.bezierCurveTo(305,770,455,785,545,760);
+ ctx.moveTo(285,645);
+ ctx.bezierCurveTo(390,790,610,810,760,665);
  ctx.stroke();
 
  const tex=new THREE.CanvasTexture(canvas);
@@ -791,7 +713,8 @@ function makeOtherPlayerGroup(data){
  glow.position.set(0,.08,.08);
  g.add(glow);
 
- // Same style as the local player face: transparent front plane.
+ // Same style as the local player face:
+ // transparent front plane, no white square, only the face lines.
  const faceTex=createPlayerFaceCanvasTexture();
  const face=new THREE.Mesh(
   new THREE.PlaneGeometry(1.22,1.22),
@@ -831,10 +754,10 @@ function makeOtherPlayerGroup(data){
  g.userData.glow=glow;
  g.userData.body=body;
  g.userData.avatarColor=data.avatarColor||'green';
- g.userData.lastSeenMs=Date.now();
  scene.add(g);
  return g;
 }
+
 
 function playerPresenceIsStale(data){
  const ms=data?.updatedAt?.toMillis?.();
@@ -1006,11 +929,6 @@ let activeScriptIndex=0;
 const cameraRig={yaw:Math.PI*.25,pitch:-.42,zoom:34,focus:new THREE.Vector3(0,1.5,0),currentPos:new THREE.Vector3(25,18,25),lookPos:new THREE.Vector3(0,1.5,0)};
 const playRig={yaw:0,pitch:-.35,zoom:11,currentPos:new THREE.Vector3(),lookPos:new THREE.Vector3()};
 const keys={};
-const mobileMove={x:0,y:0};
-let mobileJumpQueued=false;
-let mobileLookPointerId=null;
-let mobileLookLastX=0;
-let mobileLookLastY=0;
 const playOverlay=document.getElementById('playOverlay');
 const leftPanel=document.getElementById('leftPanel');
 const rightPanel=document.getElementById('rightPanel');
@@ -1711,87 +1629,6 @@ async function publishOhsWorld(){
 }
 window.OH_publishWorld = publishOhsWorld;
 
-
-function isLikelyMobile(){
- return matchMedia('(pointer:coarse)').matches || innerWidth < 760 || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-}
-function initMobileRuntimeControls(){
- if(!isLikelyMobile())return;
- document.body.classList.add('mobile-runtime');
-
- const stick=document.getElementById('mobileStick');
- const knob=document.getElementById('mobileStickKnob');
- const jump=document.getElementById('mobileJumpBtn');
- const canvas=renderer.domElement;
-
- function resetStick(){
-  mobileMove.x=0;mobileMove.y=0;
-  if(knob)knob.style.transform='translate(-50%,-50%)';
- }
- function updateStick(clientX,clientY){
-  const rect=stick.getBoundingClientRect();
-  const cx=rect.left+rect.width/2;
-  const cy=rect.top+rect.height/2;
-  let dx=clientX-cx;
-  let dy=clientY-cy;
-  const max=rect.width*.36;
-  const len=Math.hypot(dx,dy);
-  if(len>max){dx=dx/len*max;dy=dy/len*max;}
-  mobileMove.x=clamp(dx/max,-1,1);
-  mobileMove.y=clamp(dy/max,-1,1);
-  knob.style.transform=`translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
- }
-
- if(stick && !stick.dataset.ready){
-  stick.dataset.ready='1';
-  stick.addEventListener('pointerdown',e=>{
-   e.preventDefault();
-   stick.setPointerCapture?.(e.pointerId);
-   updateStick(e.clientX,e.clientY);
-  });
-  stick.addEventListener('pointermove',e=>{
-   if(e.buttons || e.pointerType==='touch')updateStick(e.clientX,e.clientY);
-  });
-  stick.addEventListener('pointerup',resetStick);
-  stick.addEventListener('pointercancel',resetStick);
- }
-
- if(jump && !jump.dataset.ready){
-  jump.dataset.ready='1';
-  const queueJump=e=>{e.preventDefault();mobileJumpQueued=true;};
-  jump.addEventListener('pointerdown',queueJump);
-  jump.addEventListener('touchstart',queueJump,{passive:false});
- }
-
- if(canvas && !canvas.dataset.mobileLookReady){
-  canvas.dataset.mobileLookReady='1';
-  canvas.addEventListener('pointerdown',e=>{
-   if(!gamePageMode || !isLikelyMobile())return;
-   if(e.target.closest?.('#mobileControls'))return;
-   if(e.clientX < innerWidth*.36)return;
-   mobileLookPointerId=e.pointerId;
-   mobileLookLastX=e.clientX;
-   mobileLookLastY=e.clientY;
-   canvas.setPointerCapture?.(e.pointerId);
-  });
-  canvas.addEventListener('pointermove',e=>{
-   if(!gamePageMode || mobileLookPointerId!==e.pointerId)return;
-   const dx=e.clientX-mobileLookLastX;
-   const dy=e.clientY-mobileLookLastY;
-   mobileLookLastX=e.clientX;
-   mobileLookLastY=e.clientY;
-   player.yaw-=dx*.0052;
-   player.pitch-=dy*.0042;
-   player.pitch=clamp(player.pitch,-1.15,.55);
-  });
-  const endLook=e=>{
-   if(mobileLookPointerId===e.pointerId)mobileLookPointerId=null;
-  };
-  canvas.addEventListener('pointerup',endLook);
-  canvas.addEventListener('pointercancel',endLook);
- }
-}
-
 function enableGamePageControls(){
  gamePageMode=true;
  document.body.classList.add('game-page-mode');
@@ -1838,7 +1675,6 @@ function enableGamePageControls(){
  try{rightCamera=false;}catch(e){}
 
  setTimeout(()=>canvas.focus?.(),100);
- initMobileRuntimeControls();
 }
 
 async function loadPublishedWorldFromUrl(){
@@ -2342,7 +2178,6 @@ function startPlayerTest(){
  player.grounded=true;
  player.mouthOpen=0;
  player.faceBlink=0;
- mobileJumpQueued=false;
  playerGroup.position.copy(player.position);
  playerGroup.rotation.set(0,player.facingYaw,0);
  playerGroup.visible=true;
@@ -2386,9 +2221,6 @@ function getMoveInput(){
  if(keys.KeyA)v.x-=1;
  if(keys.KeyS)v.y+=1;
  if(keys.KeyW)v.y-=1;
- v.x+=mobileMove.x||0;
- v.y+=mobileMove.y||0;
- if(v.length()>1)v.normalize();
  return v;
 }
 function groundHeightAt(x,z,feetY){
@@ -2436,7 +2268,7 @@ function updatePlayer(dt,elapsed){
   moving=true;
   player.facingYaw=Math.atan2(moveDir.x,moveDir.z);
  }
- if((keys.Space||mobileJumpQueued)&&player.grounded){
+ if(keys.Space&&player.grounded){
   player.velocity.y=player.jumpSpeed;
   player.grounded=false;
  }
