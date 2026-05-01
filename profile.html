@@ -68,17 +68,6 @@
       <div id="friendsList"><p class="comment-empty">Sign in to see friends.</p></div>
     </section>
 
-    <section class="block">
-      <h2>BLOG</h2>
-      <p class="comment-info">Developer comments are stored in Firestore.</p>
-      <div id="commentsList"><p class="comment-empty">Loading comments...</p></div>
-      <div class="row-actions" style="margin-top:10px;">
-        <textarea id="commentText" placeholder="Write a short update..."></textarea>
-        <button id="postCommentBtn" class="btn primary">Post comment</button>
-      </div>
-      <p id="commentInfo" class="comment-info">Sign in to post comments.</p>
-    </section>
-
     <div id="profileModal" class="modal">
       <div class="modal-overlay" id="profileOverlay"></div>
       <div class="modal-card">
@@ -363,27 +352,7 @@ async function renderFriends() {
     box.innerHTML = `<p class="comment-empty">Friends could not load: ${escapeHtml(err.message)}<br>Update Firestore Rules with the newest file.</p>`;
   }
 }
-async function renderComments() {
-  const box = $("commentsList");
-  try{
-    const q = query(collection(db, "comments"), orderBy("createdAt", "desc"));
-    const snap = await getDocs(q);
-    if (snap.empty) { box.innerHTML = '<p class="comment-empty">No comments yet.</p>'; return; }
-    const items = [];
-    snap.forEach(d => items.push({ id: d.id, ...d.data() }));
-    box.innerHTML = items.map(c => `<div class="comment"><div class="comment-author">${escapeHtml(c.authorName || "Player")}</div><div class="comment-text">${escapeHtml(c.text || "")}</div><div class="comment-date">${c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : ""}</div></div>`).join("");
-  }catch(err){
-    box.innerHTML = `<p class="comment-empty">Comments could not load: ${escapeHtml(err.message)}</p>`;
-  }
-}
-async function postComment() {
-  if (!currentUser || !currentProfile) { alert("Sign in first."); return; }
-  const text = $("commentText").value.trim().slice(0, 500);
-  if (!text) return;
-  await addDoc(collection(db, "comments"), {authorId: currentUser.uid,authorName: currentProfile.username,text,createdAt: serverTimestamp()});
-  $("commentText").value = "";
-  await renderComments();
-}
+
 
 $("openEditProfile").addEventListener("click", openEditProfile);
 $("closeEditProfileBtn").addEventListener("click", () => $("editProfileBox").style.display = "none");
@@ -394,12 +363,10 @@ $("userSearchInput").addEventListener("keydown", e => { if (e.key === "Enter") r
 $("profileOverlay").addEventListener("click", () => $("profileModal").classList.remove("show"));
 $("profileCloseBtn").addEventListener("click", () => $("profileModal").classList.remove("show"));
 $("addFriendBtn").addEventListener("click", addFriend);
-$("postCommentBtn").addEventListener("click", postComment);
 
 await renderUserCard();
 await renderFriendRequests();
 await renderFriends();
-await renderComments();
 
   </script>
 </body>
